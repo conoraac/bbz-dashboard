@@ -22,7 +22,7 @@ const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns
 const GSC_ACCOUNT   = process.env.GSC_ACCOUNT || 'sc-domain:bbzlimo.com'; // BBZ Search Console property
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
 
-const TEMPLATE = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+const TEMPLATE = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'), 'utf8'));
 
 // ----------------------------------------------------------------------------
@@ -224,7 +224,6 @@ app.post('/api/ask', async (req, res) => {
   } catch (e) { res.status(500).json({ error: String(e) }); }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Railway / local: listen.  Vercel: the app is exported and invoked per-request.
 if (!process.env.VERCEL) {
