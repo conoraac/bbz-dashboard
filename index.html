@@ -11,7 +11,7 @@
 <style>
   :root{
     --black:#0d0d0f;--char:#161719;--ink:#24262b;--ink2:#585c64;--muted:#9a9ea6;--faint:#bcbfc5;
-    --gold:#c0a35e;--gold-lt:#dcc28d;--gold-dk:#a3884a;--paper:#fff;--bg:#eceae6;--line:#e7e3db;--line2:#f0ede7;
+    --gold:#c0a35e;--gold-lt:#dcc28d;--gold-dk:#a3884a;--paper:#fff;--bg:#ffffff;--line:#e7e3db;--line2:#f0ede7;
     --pos:#3f9e74;--neg:#cf6b5f;--flatbg:#eceef0;--flat:#8b8f97;
     --c1:#c0a35e;--c2:#2b2d33;--c3:#6e8298;--c4:#8a9b7e;--c5:#b5835f;--c6:#9a7e8d;--c7:#88939b;--c8:#d3c08f;--c9:#6f6280;
     --serif:'Fraunces',Georgia,serif;--sans:'Hanken Grotesk',-apple-system,Arial,sans-serif;
@@ -44,22 +44,29 @@
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23a3884a' stroke-width='1.5' fill='none'/></svg>");
     background-repeat:no-repeat;background-position:right 10px center}
   select:focus{outline:none;border-color:var(--gold)}
+  .mInput{font-family:var(--sans);font-size:12.5px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-weight:600;cursor:pointer}
+  .mInput:focus{outline:none;border-color:var(--gold)}
 
   .ctx{max-width:1180px;margin:0 auto;padding:16px 24px 4px}
   .ctx .lead{font-family:var(--serif);font-size:22px;color:var(--ink)}
   .ctx .lead b{color:var(--gold-dk)}
   .ctx .note{font-size:12px;color:var(--ink2);margin-top:3px}
 
-  .sec{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-dk);font-weight:700;margin:30px 0 13px;display:flex;align-items:center;gap:10px}
-  .sec::after{content:"";flex:1;height:1px;background:var(--line)}
+  .sechead{display:flex;align-items:center;gap:14px;margin:56px 0 18px;padding-bottom:15px;border-bottom:1px solid var(--line)}
+  .secnum{width:30px;height:30px;border-radius:50%;background:var(--black);color:var(--gold-lt);font-family:var(--serif);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .tt{font-family:var(--serif);font-size:23px;font-weight:600;color:var(--ink);line-height:1.05;letter-spacing:.005em}
+  .ss{font-size:10.5px;color:var(--gold-dk);letter-spacing:.16em;text-transform:uppercase;margin-top:5px;font-weight:700}
+  .subhead{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);font-weight:700;margin:30px 0 12px;display:flex;align-items:center;gap:10px}
+  .subhead::after{content:"";flex:1;height:1px;background:var(--line2)}
+
 
   .grid{display:grid;gap:14px}
   .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
-  .card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:18px}
+  .card{background:#fff;border:1px solid #e6e2da;border-radius:10px;padding:18px;box-shadow:0 1px 2px rgba(16,17,21,.04),0 12px 28px -18px rgba(16,17,21,.20)}
   .card h3{font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:14px}
 
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:11px;padding:15px 16px;border-top:2px solid var(--line)}
+  .kpi{background:#fff;border:1px solid #e6e2da;border-radius:10px;padding:15px 16px;border-top:2px solid var(--line);box-shadow:0 1px 2px rgba(16,17,21,.04),0 12px 28px -18px rgba(16,17,21,.18)}
   .kpi.on{border-top-color:var(--gold);box-shadow:0 6px 20px -10px rgba(192,163,94,.5)}
   .kpi .l{font-size:10.5px;color:var(--ink2);font-weight:600}
   .kpi .v{font-family:var(--serif);font-size:30px;font-weight:500;color:var(--ink);margin:7px 0 5px;letter-spacing:-.01em}
@@ -88,18 +95,6 @@
   .connect input{min-width:240px}
   .connect button{font-family:var(--sans);font-size:11px;font-weight:700;background:var(--gold);color:#1a1208;border:none;border-radius:5px;padding:6px 15px;cursor:pointer}
   .connect .note{color:#8a8d92;font-size:9.5px;flex:1;min-width:200px}
-  .qa{background:#fff;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:11px;padding:18px}
-  .qa-h{font-size:11px;letter-spacing:.02em;color:var(--gold-dk);font-weight:700;margin-bottom:12px}
-  .qa-row{display:flex;gap:8px}
-  .qa-in{flex:1;font-family:var(--sans);font-size:13px;padding:9px 12px;border:1px solid var(--line);border-radius:7px;color:var(--ink)}
-  .qa-in:focus{outline:none;border-color:var(--gold)}
-  .qa-btn{font-family:var(--sans);font-size:13px;font-weight:700;color:#fff;background:var(--black);border:none;border-radius:7px;padding:9px 20px;cursor:pointer}
-  .qa-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-  .qa-chip{font-size:11px;color:var(--gold-dk);background:#f4efe2;border:1px solid #e8dcc0;border-radius:13px;padding:5px 11px;cursor:pointer}
-  .qa-chip:hover{background:#efe6d0}
-  .qa-ans{font-size:13px;color:var(--ink);line-height:1.65;margin-top:13px;white-space:pre-wrap}
-  .qa-ans:empty{display:none}
-  .qa-ans .think{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -114,7 +109,16 @@
   <div class="field"><label>Time Frame</label><select id="f_tf">
     <option value="this">This Month</option><option value="last" selected>Last Month</option>
     <option value="3m">Last 3 Months</option><option value="6m">Last 6 Months</option>
-    <option value="12m">Last 12 Months</option><option value="ytd">Year to Date</option></select></div>
+    <option value="12m">Last 12 Months</option><option value="ytd">Year to Date</option>
+    <option value="custom">Custom range…</option></select></div>
+  <div class="field" id="customWrap" style="display:none">
+    <label>Custom range</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input type="month" id="f_from" class="mInput">
+      <span style="color:var(--muted);font-size:11px">to</span>
+      <input type="month" id="f_to" class="mInput">
+    </div>
+  </div>
   <div class="field"><label>Compare to</label><select id="f_cmp">
     <option value="year" selected>Previous Year</option><option value="period">Previous Period</option></select></div>
   <div class="field"><label>Metric</label><select id="f_metric">
@@ -123,6 +127,7 @@
   <div class="field"><label>Channel</label><select id="f_ch"></select></div>
   <div class="field"><label>Region</label><select id="f_reg"></select></div>
   <div class="field"><label>City</label><select id="f_city"></select></div>
+  <div class="field"><label>Key Event</label><select id="f_ke"></select></div>
 </div></div>
 
 <div class="ctx">
@@ -131,31 +136,31 @@
 </div>
 
 <div class="wrap">
-  <div class="sec">Overview</div>
+  <div class="sechead" style="margin-top:26px"><div class="secnum">1</div><div><div class="tt">Google Analytics 4</div><div class="ss">Website Performance</div></div></div>
   <div class="grid g5" id="kpis"></div>
 
-  <div class="sec">Trend</div>
+  <div class="subhead">Traffic Trend</div>
   <div class="card"><h3 id="trendTitle"></h3><div class="chartwrap" style="height:280px"><canvas id="trend"></canvas></div>
     <div class="legend" id="trendLeg"></div></div>
 
-  <div class="sec">Channels</div>
+  <div class="subhead">Acquisition by Channel</div>
   <div class="grid g2">
     <div class="card"><h3 id="chTitle"></h3><div class="chartwrap" style="height:260px"><canvas id="chBar"></canvas></div></div>
     <div class="card"><h3>Channel detail</h3><table id="chTable"></table></div>
   </div>
 
-  <div class="sec">Geography</div>
+  <div class="subhead">Geography</div>
   <div class="grid g2">
     <div class="card"><h3 id="regTitle">Sessions by Region</h3><div class="chartwrap" style="height:230px"><canvas id="regBar"></canvas></div></div>
     <div class="card"><h3 id="cityTitle">Sessions by City</h3><div class="chartwrap" style="height:230px"><canvas id="cityBar"></canvas></div></div>
   </div>
 
-  <div class="sec">Key Events</div>
+  <div class="subhead">Key Events &amp; Conversions</div>
   <div class="grid g4" id="keKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Key-event volume — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="keBar"></canvas></div>
     <div class="legend" id="keLeg"></div></div>
 
-  <div class="sec">Google Ads</div>
+  <div class="sechead"><div class="secnum">2</div><div><div class="tt">Google Ads</div><div class="ss">Paid Search</div></div></div>
   <div class="note" id="gadsNote"></div>
   <div class="grid g4" id="gadsKpis" style="margin-bottom:14px"></div>
   <div class="grid g2">
@@ -163,7 +168,7 @@
     <div class="card"><h3>Campaign detail — current window</h3><table id="gadsTable"></table></div>
   </div>
 
-  <div class="sec">Meta Ads</div>
+  <div class="sechead"><div class="secnum">3</div><div><div class="tt">Meta Ads</div><div class="ss">Paid Social</div></div></div>
   <div class="note" id="metaNote"></div>
   <div class="grid g4" id="metaKpis" style="margin-bottom:14px"></div>
   <div class="grid g2">
@@ -171,33 +176,20 @@
     <div class="card"><h3>Campaign detail — current window</h3><table id="metaTable"></table></div>
   </div>
 
-  <div class="sec">Google Business Profile</div>
+  <div class="sechead"><div class="secnum">4</div><div><div class="tt">Google Business Profile</div><div class="ss">Local Presence</div></div></div>
   <div class="note" id="gbpNote"></div>
   <div class="grid g4" id="gbpKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Profile impressions — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="gbpTrend"></canvas></div></div>
 
-  <div class="sec">Phone Calls · CallRail</div>
+  <div class="sechead"><div class="secnum">5</div><div><div class="tt">Phone Calls</div><div class="ss">Call Tracking · CallRail</div></div></div>
   <div class="note" id="crNote"></div>
   <div class="grid g4" id="crKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Call volume — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
 
-  <div class="sec">Search Console</div>
+  <div class="sechead"><div class="secnum">6</div><div><div class="tt">Search Console</div><div class="ss">Organic Search</div></div></div>
   <div class="note" id="scNote"></div>
   <div class="grid g4" id="scKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Organic clicks &amp; avg position — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="scTrend"></canvas></div></div>
-
-  <div class="sec">Ask — Realtime</div>
-  <div class="qa" data-key="explorer">
-    <div class="qa-h">Ask about the current view — your question is answered against whatever the filters above are set to</div>
-    <div class="qa-row"><input class="qa-in" placeholder="e.g. Which channel improved the most this period, and where should I shift budget?"><button class="qa-btn">Ask</button></div>
-    <div class="qa-chips">
-      <span class="qa-chip">Which channel improved most?</span>
-      <span class="qa-chip">Where should I shift budget?</span>
-      <span class="qa-chip">What stands out in this view?</span>
-      <span class="qa-chip">Summarize this for the client</span>
-    </div>
-    <div class="qa-ans"></div>
-  </div>
 
   <footer id="foot"></footer>
 </div>
@@ -218,7 +210,7 @@ function sumPaid(src,win,idx){let t=0;win.forEach(ym=>{const d=src&&src.data[ym]
 function paidBreak(src,win){const m={};win.forEach(ym=>{const d=src&&src.data[ym];if(!d)return;Object.entries(d).forEach(([c,a])=>{const x=m[c]=m[c]||[0,0,0,0,0];for(let i=0;i<a.length;i++)x[i]+=(a[i]||0);});});return Object.entries(m).sort((p,q)=>q[1][2]-p[1][2]);}
 function sumArr(src,win,idx){let t=0;win.forEach(ym=>{const a=src&&src.data&&src.data[ym];if(a)t+=(a[idx]||0);});return t;}
 function hasData(src){return !!(src&&src.months&&src.months.length&&!src.empty);}
-function phState(noteId,kpiId,msg){const n=document.getElementById(noteId);if(n)n.textContent=msg;const k=document.getElementById(kpiId);if(k)k.innerHTML='<div class="kpi" style="grid-column:1/-1;opacity:.7"><div class="l">Not connected yet</div><div class="v" style="font-size:15px;font-weight:600">\u2014</div><div class="d">Goes live once connected</div></div>';}
+function phState(noteId,kpiId,msg){const n=document.getElementById(noteId);if(n)n.textContent=msg;const k=document.getElementById(kpiId);if(k)k.innerHTML='<div class="kpi" style="grid-column:1/-1;opacity:.7"><div class="l">Updating</div><div class="v" style="font-size:15px;font-weight:600">\u2014</div><div class="d">Refreshing shortly</div></div>';}
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const ANCHOR=DATA.current;
 function ymAdd(ym,d){let y=+ym.slice(0,4),m=+ym.slice(4)-1,t=y*12+m+d;return String(Math.floor(t/12)).padStart(4,'0')+String((t%12)+1).padStart(2,'0');}
@@ -233,6 +225,14 @@ function windowMonths(tf){
   if(tf==='6m')return rangeEnd(ANCHOR,6);
   if(tf==='12m')return rangeEnd(ANCHOR,12);
   if(tf==='ytd'){let y=ANCHOR.slice(0,4),mm=+ANCHOR.slice(4),a=[];for(let m=1;m<=mm;m++)a.push(y+String(m).padStart(2,'0'));return a;}
+  if(tf==='custom'){
+    let f=document.getElementById('f_from').value, t=document.getElementById('f_to').value;
+    if(!f||!t)return[ANCHOR];
+    let a=f.replace('-',''), b=t.replace('-','');
+    if(a>b){let x=a;a=b;b=x;}
+    let arr=[],cur=a,g=0;while(cur<=b&&g<240){arr.push(cur);cur=ymAdd(cur,1);g++;}
+    return arr.length?arr:[ANCHOR];
+  }
 }
 function compWindow(win,cmp){
   if(cmp==='year')return win.map(m=>ymAdd(m,-12));
@@ -250,6 +250,7 @@ function delta(cur,prev){if(prev===0)return cur>0?{t:'New',c:'up'}:{t:'—',c:'f
 const fch=document.getElementById('f_ch');fch.innerHTML='<option value="All">All Channels</option>'+DATA.channels.map(c=>`<option>${c}</option>`).join('');
 const freg=document.getElementById('f_reg');freg.innerHTML='<option value="All">All Regions</option>'+DATA.regNames.filter(n=>n!=='Other').map(c=>`<option>${c}</option>`).join('');
 const fcity=document.getElementById('f_city');fcity.innerHTML='<option value="All">All Cities</option>'+DATA.cityNames.filter(n=>n!=='Other').map(c=>`<option>${c}</option>`).join('');
+const fke=document.getElementById('f_ke');fke.innerHTML='<option value="all">All Key Events</option>'+KE_LABELS.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
 
 let charts={};
 function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
@@ -258,26 +259,37 @@ function render(){
   const tf=document.getElementById('f_tf').value, cmp=document.getElementById('f_cmp').value,
         mIdx=+document.getElementById('f_metric').value, chf=document.getElementById('f_ch').value,
         regf=document.getElementById('f_reg').value, cityf=document.getElementById('f_city').value;
+  const kef=document.getElementById('f_ke').value, keSel=kef==='all'?null:+kef;
+  const cw=document.getElementById('customWrap');
+  if(cw)cw.style.display=tf==='custom'?'':'none';
+  if(tf==='custom'){const ff=document.getElementById('f_from'),tt=document.getElementById('f_to');
+    const toI=ym=>ym.slice(0,4)+'-'+ym.slice(4);
+    if(!ff.value||!tt.value){ff.value=toI(ymAdd(ANCHOR,-2));tt.value=toI(ANCHOR);}}
   const win=windowMonths(tf), comp=compWindow(win,cmp);
   const mName=METRICS[mIdx][0];
-  const tfLabel={this:'This Month',last:'Last Month','3m':'Last 3 Months','6m':'Last 6 Months','12m':'Last 12 Months',ytd:'Year to Date'}[tf];
+  const tfLabel={this:'This Month',last:'Last Month','3m':'Last 3 Months','6m':'Last 6 Months','12m':'Last 12 Months',ytd:'Year to Date',custom:'Custom range'}[tf];
   const winLab=win.length===1?ymLabel(win[0]):ymLabel(win[0])+' – '+ymLabel(win[win.length-1]);
   const compLab=comp.length===1?ymLabel(comp[0]):ymLabel(comp[0])+' – '+ymLabel(comp[comp.length-1]);
 
   document.getElementById('ctxLead').innerHTML=`${tfLabel}: <b>${winLab}</b> &nbsp;vs&nbsp; ${cmp==='year'?'Previous Year':'Previous Period'}: <b>${compLab}</b>`;
-  document.getElementById('ctxNote').textContent=`Showing ${mName}${chf!=='All'?' · '+chf:''}. Deltas compare the two windows above.`;
+  document.getElementById('ctxNote').textContent=`Showing ${(mIdx===4&&keSel!==null)?KE_LABELS[keSel]:mName}${chf!=='All'?' · '+chf:''}. Deltas compare the two windows above.`;
 
   // KPI row
   document.getElementById('kpis').innerHTML=METRICS.map(([nm,ix])=>{
-    let cur=sumCh(win,ix,chf),prev=sumCh(comp,ix,chf),d=delta(cur,prev);
-    return `<div class="kpi ${ix===mIdx?'on':''}"><div class="l">${nm}</div><div class="v">${fmt(cur)}</div>
+    let cur,prev,label=nm;
+    if(ix===4&&keSel!==null){cur=sumKE(win,keSel);prev=sumKE(comp,keSel);label=KE_LABELS[keSel];}
+    else{cur=sumCh(win,ix,chf);prev=sumCh(comp,ix,chf);}
+    let d=delta(cur,prev);
+    return `<div class="kpi ${ix===mIdx?'on':''}"><div class="l">${label}</div><div class="v">${fmt(cur)}</div>
       <div class="d ${d.c}">${d.t} <span class="vs">vs ${fmt(prev)}</span></div></div>`;}).join('');
 
   // Trend: trailing up to 12 months ending at window end
   const endM=win[win.length-1], span=Math.max(12,win.length), tMonths=rangeEnd(endM,span);
-  const curSeries=tMonths.map(ym=>sumCh([ym],mIdx,chf));
-  const cmpSeries=tMonths.map(ym=>sumCh([cmp==='year'?ymAdd(ym,-12):ymAdd(ym,-span)],mIdx,chf));
-  document.getElementById('trendTitle').textContent=`${mName}${chf!=='All'?' · '+chf:''} — trailing ${span} months`;
+  const isKE=mIdx===4&&keSel!==null;
+  const curSeries=tMonths.map(ym=>isKE?sumKE([ym],keSel):sumCh([ym],mIdx,chf));
+  const cmpSeries=tMonths.map(ym=>{const pm=cmp==='year'?ymAdd(ym,-12):ymAdd(ym,-span);return isKE?sumKE([pm],keSel):sumCh([pm],mIdx,chf);});
+  const trendName=isKE?KE_LABELS[keSel]:mName;
+  document.getElementById('trendTitle').textContent=`${trendName}${(!isKE&&chf!=='All')?' · '+chf:''} — trailing ${span} months`;
   mkChart('trend',{type:'line',data:{labels:tMonths.map(ymLabel),datasets:[
     {data:curSeries,borderColor:col('gold-dk'),backgroundColor:'rgba(192,163,94,.12)',fill:true,borderWidth:2,tension:.35,pointRadius:0,pointHoverRadius:4},
     {data:cmpSeries,borderColor:'#c4c8cd',borderWidth:1.5,borderDash:[4,3],tension:.35,pointRadius:0}
@@ -310,12 +322,13 @@ function render(){
   // Key events
   document.getElementById('keKpis').innerHTML=KE_LABELS.map((nm,ix)=>{
     let cur=sumKE(win,ix),prev=sumKE(comp,ix),d=delta(cur,prev);
-    return `<div class="kpi"><div class="l">${nm}</div><div class="v">${fmt(cur)}</div><div class="d ${d.c}">${d.t} <span class="vs">vs ${fmt(prev)}</span></div></div>`;}).join('');
+    return `<div class="kpi ${keSel===ix?'on':''}"><div class="l">${nm}</div><div class="v">${fmt(cur)}</div><div class="d ${d.c}">${d.t} <span class="vs">vs ${fmt(prev)}</span></div></div>`;}).join('');
   const keMonths=rangeEnd(endM,12);
-  mkChart('keBar',{type:'bar',data:{labels:keMonths.map(ymLabel),datasets:KE_LABELS.map((nm,ix)=>({
-    label:nm,data:keMonths.map(ym=>sumKE([ym],ix)),backgroundColor:PAL[ix],stack:'s',borderRadius:2}))},
+  const keSet=keSel===null?KE_LABELS.map((nm,ix)=>({nm,ix})):[{nm:KE_LABELS[keSel],ix:keSel}];
+  mkChart('keBar',{type:'bar',data:{labels:keMonths.map(ymLabel),datasets:keSet.map(({nm,ix})=>({
+    label:nm,data:keMonths.map(ym=>sumKE([ym],ix)),backgroundColor:keSel===null?PAL[ix]:col('gold'),stack:'s',borderRadius:2}))},
     options:{plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false},stacked:true},y:{grid:{color:'#f1efe9'},stacked:true,beginAtZero:true}}}});
-  document.getElementById('keLeg').innerHTML=KE_LABELS.map((nm,ix)=>`<span><i style="background:${PAL[ix]}"></i>${nm}</span>`).join('');
+  document.getElementById('keLeg').innerHTML=keSet.map(({nm,ix})=>`<span><i style="background:${keSel===null?PAL[ix]:col('gold')}"></i>${nm}</span>`).join('');
 
   // geo KPI note when filtered
   if(regf!=='All'||cityf!=='All'){
@@ -354,7 +367,7 @@ function render(){
     `Meta (current vs comparison): Spend ${money(mA.now[2])} vs ${money(mA.prev[2])}; Leads ${fmt(mA.now[3])} vs ${fmt(mA.prev[3])}; CPL ${money(mA.now[-1])}. Campaigns: `+mA.br.slice(0,6).map(x=>`${x[0]} ${money(x[1][2])}/${fmt(x[1][3])} leads`).join(', ')+`.`;
   // ---- Google Business Profile ----
   (function(){const src=DATA.gbp;
-    if(!hasData(src)){phState('gbpNote','gbpKpis','Connects live once your Windsor key is set \u2014 Google Business Profile data flows in automatically.');if(charts.gbpTrend)charts.gbpTrend.destroy();return;}
+    if(!hasData(src)){phState('gbpNote','gbpKpis','Google Business Profile data updates automatically and will appear here shortly.');if(charts.gbpTrend)charts.gbpTrend.destroy();return;}
     const defs=[['Impressions',0],['Calls',1],['Direction Requests',3],['Website Clicks',2]];
     document.getElementById('gbpKpis').innerHTML=defs.map(([nm,ix])=>{const c=sumArr(src,win,ix),pv=sumArr(src,comp,ix),d=delta(c,pv);return `<div class="kpi"><div class="l">${nm}</div><div class="v">${fmt(c)}</div><div class="d ${d.c}">${d.t} <span class="vs">vs ${fmt(pv)}</span></div></div>`;}).join('');
     const tM=rangeEnd(win[win.length-1],12);
@@ -362,7 +375,7 @@ function render(){
     document.getElementById('gbpNote').innerHTML=`Google Business Profile \u00b7 BBZ Limo Service NJ \u00b7 ${winLab}. &nbsp;\u2605 ${src.rating?src.rating.toFixed(1):'\u2014'} rating \u00b7 ${fmt(src.reviews||0)} reviews.`;})();
   // ---- CallRail ----
   (function(){const src=DATA.callrail;
-    if(!hasData(src)){phState('crNote','crKpis',"CallRail is supported \u2014 connect BBZ's CallRail account in Windsor (or wire the CallRail API) and call data flows in here automatically.");if(charts.crTrend)charts.crTrend.destroy();return;}
+    if(!hasData(src)){phState('crNote','crKpis','Call tracking data updates automatically and will appear here shortly.');if(charts.crTrend)charts.crTrend.destroy();return;}
     const tot=sumArr(src,win,0),ans=sumArr(src,win,1),fst=sumArr(src,win,2),ptot=sumArr(src,comp,0),pans=sumArr(src,comp,1);
     const rate=tot?Math.round(ans/tot*100):0,prate=ptot?Math.round(pans/ptot*100):0;
     const rows=[['Total Calls',fmt(tot),delta(tot,ptot)],['Answered',fmt(ans),delta(ans,pans)],['Answer Rate',rate+'%',delta(rate,prate)],['First-Time',fmt(fst),delta(fst,sumArr(src,comp,2))]];
@@ -372,7 +385,7 @@ function render(){
     document.getElementById('crNote').textContent=`CallRail \u00b7 BBZ \u00b7 ${winLab}.`;})();
   // ---- Search Console ----
   (function(){const src=DATA.searchconsole;
-    if(!hasData(src)){phState('scNote','scKpis','Connects live once your Windsor key is set — Search Console data flows in automatically.');if(charts.scTrend)charts.scTrend.destroy();return;}
+    if(!hasData(src)){phState('scNote','scKpis','Search Console data updates automatically and will appear here shortly.');if(charts.scTrend)charts.scTrend.destroy();return;}
     function wpos(w){let n=0,d=0;w.forEach(ym=>{const a=src.data[ym];if(a){n+=a[2]*a[1];d+=a[1];}});return d?n/d:0;}
     const clk=sumArr(src,win,0),imp=sumArr(src,win,1),pclk=sumArr(src,comp,0),pimp=sumArr(src,comp,1);
     const pos=wpos(win),ppos=wpos(comp),ctr=imp?clk/imp*100:0,pctr=pimp?pclk/pimp*100:0;
@@ -384,7 +397,7 @@ function render(){
       {type:'line',label:'Avg position',data:tM.map(ym=>{const a=src.data[ym];return a?a[2]:null;}),borderColor:col('gold-dk'),borderWidth:2,tension:.35,pointRadius:0,yAxisID:'y1'}
     ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false}},y:{position:'left',grid:{color:'#f1efe9'},beginAtZero:true},y1:{position:'right',reverse:true,grid:{display:false}}}}});
     document.getElementById('scNote').innerHTML=`Search Console · bbzlimo.com · ${winLab}. Position axis inverted — lower is better. Google limits history to ~16 months.`;})();
-  const otherSnap=(hasData(DATA.gbp)?`GBP (current vs comparison): Impressions ${fmt(sumArr(DATA.gbp,win,0))} vs ${fmt(sumArr(DATA.gbp,comp,0))}; Calls ${fmt(sumArr(DATA.gbp,win,1))}; Direction requests ${fmt(sumArr(DATA.gbp,win,3))}; Rating ${DATA.gbp.rating||'n/a'} (${DATA.gbp.reviews||0} reviews).`:'Google Business Profile: connects live once the Windsor key is set.')+'\n'+(hasData(DATA.callrail)?`CallRail: ${fmt(sumArr(DATA.callrail,win,0))} calls, ${fmt(sumArr(DATA.callrail,win,1))} answered this window.`:'CallRail: supported by Windsor, awaiting BBZ account connection.')+'\n'+(hasData(DATA.searchconsole)?`Search Console: ${fmt(sumArr(DATA.searchconsole,win,0))} clicks, ${fmt(sumArr(DATA.searchconsole,win,1))} impressions.`:'Search Console: connects live once the Windsor key is set.');
+  const otherSnap=(hasData(DATA.gbp)?`GBP (current vs comparison): Impressions ${fmt(sumArr(DATA.gbp,win,0))} vs ${fmt(sumArr(DATA.gbp,comp,0))}; Calls ${fmt(sumArr(DATA.gbp,win,1))}; Direction requests ${fmt(sumArr(DATA.gbp,win,3))}; Rating ${DATA.gbp.rating||'n/a'} (${DATA.gbp.reviews||0} reviews).`:'Google Business Profile data updating.')+'\n'+(hasData(DATA.callrail)?`CallRail: ${fmt(sumArr(DATA.callrail,win,0))} calls, ${fmt(sumArr(DATA.callrail,win,1))} answered this window.`:'Call tracking data updating.')+'\n'+(hasData(DATA.searchconsole)?`Search Console: ${fmt(sumArr(DATA.searchconsole,win,0))} clicks, ${fmt(sumArr(DATA.searchconsole,win,1))} impressions.`:'Search Console data updating.');
   window.__SNAP=`Current view — ${tfLabel} (${winLab}) vs ${cmp==='year'?'Previous Year':'Previous Period'} (${compLab}). Metric focus: ${mName}. Filters: Channel=${chf}, Region=${regf}, City=${cityf}.\n`+
     `KPIs (current vs comparison): `+METRICS.map(([nm,ix])=>`${nm} ${fmt(sumCh(win,ix,chf))} vs ${fmt(sumCh(comp,ix,chf))}`).join('; ')+`.\n`+
     `${mName} by channel (current window): `+chBreak.map(x=>`${x[0]} ${fmt(x[1])}`).join(', ')+`.\n`+
@@ -395,21 +408,36 @@ function render(){
 }
 
 document.querySelectorAll('select').forEach(s=>s.addEventListener('change',render));
+(function(){const k=Object.keys(DATA.chm||{}).sort();const toI=ym=>ym.slice(0,4)+'-'+ym.slice(4);
+  const lo=k.length?k[0]:ymAdd(ANCHOR,-23),hi=ymAdd(ANCHOR,1);
+  const f=document.getElementById('f_from'),t=document.getElementById('f_to');
+  if(f&&t){f.min=t.min=toI(lo);f.max=t.max=toI(hi);
+    f.addEventListener('change',render);t.addEventListener('change',render);}})();
 render();
 
-(function(){const box=document.querySelector('.qa');const inp=box.querySelector('.qa-in'),ans=box.querySelector('.qa-ans');
-  box.querySelector('.qa-btn').onclick=()=>askView(inp,ans);
-  inp.addEventListener('keydown',e=>{if(e.key==="Enter")askView(inp,ans);});
-  box.querySelectorAll('.qa-chip').forEach(ch=>ch.onclick=()=>{inp.value=ch.textContent;askView(inp,ans);});})();
-async function askView(inp,ans){const q=inp.value.trim();if(!q)return;
-  ans.innerHTML='<span class="think">Thinking…</span>';
-  try{const res=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question:q,context:window.__SNAP})});
-    const j=await res.json();
-    if(!res.ok){ans.textContent="Error: "+(j.error?JSON.stringify(j.error).slice(0,300):res.status);return;}
-    ans.textContent=j.text||"No answer returned.";
-  }catch(e){ans.textContent="Could not reach the server ("+e.message+").";}}
-
 document.getElementById('foot').innerHTML=`<b>Source:</b> Google Analytics 4 (property 309061594) via Windsor.ai, pulled live. Monthly grain, Jun 2024–Jun 2026. &nbsp; <b>Notes:</b> Bot/data-center traffic (Singapore, Lanzhou, Gansu, Ashburn, etc.) is filtered out. <b>request_a_quote</b> only recorded data in Jan–Feb 2026 and <b>lead_form</b> began Jan 2026 — earlier zeros reflect tracking not yet live, not a true decline. Minor channels under ~30 sessions/month are excluded, so monthly totals run ~1% below the platform figure. "This Month" (Jun 2026) is partial.`;
+</script>
+<script>
+/* After a cold start the page shows snapshot data; poll until live data is warm, then refresh once. */
+(function () {
+  if (typeof window.__STALE__ === 'undefined' || !window.__STALE__) return;
+  var bar = document.createElement('div');
+  bar.textContent = 'Loading live data\u2026';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#15110b;color:#d8b46a;'
+    + 'font:600 12.5px/2.6 \'Hanken Grotesk\',system-ui,sans-serif;text-align:center;letter-spacing:.06em;'
+    + 'border-bottom:1px solid rgba(216,180,106,.25)';
+  document.body.appendChild(bar);
+  var n = 0, iv = setInterval(function () {
+    n++;
+    fetch('/api/ready', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ready) { clearInterval(iv); bar.textContent = 'Live data ready \u2014 refreshing\u2026'; setTimeout(function(){ location.reload(); }, 400); }
+      })
+      .catch(function () {});
+    if (n > 48) { clearInterval(iv); bar.style.display = 'none'; } // stop after ~4 min
+  }, 5000);
+})();
 </script>
 </body>
 </html>

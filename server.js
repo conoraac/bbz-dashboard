@@ -40,7 +40,11 @@ async function windsor(connector, account, fields, from, to, extra) {
     + `&date_from=${from}&date_to=${to}`
     + `&fields=${fields.join(',')}&_renderer=json`;
   if (extra) for (const [k, v] of Object.entries(extra)) url += `&${k}=${encodeURIComponent(v)}`;
-  const r = await fetch(url);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 30000); // never let one source hang the refresh
+  let r;
+  try { r = await fetch(url, { signal: ctrl.signal }); }
+  finally { clearTimeout(timer); }
   if (!r.ok) throw new Error(connector + ' ' + r.status + ': ' + (await r.text()).slice(0, 200));
   const j = await r.json();
   return j.data || j;
@@ -178,26 +182,51 @@ async function buildGSC() {
 }
 
 let cache = { t: 0, data: null };
-async function getData() {
-  if (!WINDSOR_KEY) return SNAPSHOT;                          // no key yet -> snapshot
-  if (cache.data && Date.now() - cache.t < 3600e3) return cache.data;
+let inflight = null;
+const isFresh = () => cache.data && Date.now() - cache.t < 3600e3;
+
+async function refresh() {
   const [ga4, gads, meta, gbp, callrail, searchconsole] = await Promise.all([
-    buildGA4(), buildGads(), buildMeta(),
+    buildGA4().catch(e => { console.error('GA4:', e.message); return null; }),
+    buildGads().catch(e => { console.error('GAds:', e.message); return { months: [], data: {}, empty: true }; }),
+    buildMeta().catch(e => { console.error('Meta:', e.message); return { months: [], data: {}, empty: true }; }),
     buildGBP().catch(e => { console.error('GBP:', e.message); return { months: [], data: {}, empty: true }; }),
-    buildCallRail().catch(() => ({ months: [], data: {}, empty: true })),
-    buildGSC().catch(() => null),
+    buildCallRail().catch(e => { console.error('CallRail:', e.message); return { months: [], data: {}, empty: true }; }),
+    buildGSC().catch(e => { console.error('GSC:', e.message); return null; }),
   ]);
-  const data = { ...ga4, gads, meta, gbp, callrail, searchconsole };
+  const base = ga4 || SNAPSHOT;                 // if GA4 itself fails, fall back to snapshot shape
+  const data = { ...base, gads, meta, gbp, callrail, searchconsole };
   cache = { t: Date.now(), data };
   return data;
 }
 
-// ---- the page (fresh data injected server-side each load) ----
-app.get('/', async (req, res) => {
-  let data;
-  try { data = await getData(); } catch (e) { console.error('Live pull failed, using snapshot:', e.message); data = SNAPSHOT; }
-  res.type('html').send(TEMPLATE.replace('/*__DATA__*/', 'const DATA=' + JSON.stringify(data) + ';'));
+// Returns immediately if fresh; otherwise shares a single in-flight pull.
+async function getData() {
+  if (!WINDSOR_KEY) return SNAPSHOT;
+  if (isFresh()) return cache.data;
+  if (!inflight) inflight = refresh().finally(() => { inflight = null; });
+  return inflight;
+}
+
+// Fire-and-forget: kick a refresh in the background without blocking anyone.
+function warm() {
+  if (!WINDSOR_KEY || isFresh() || inflight) return;
+  inflight = refresh().catch(e => console.error('warm failed:', e.message)).finally(() => { inflight = null; });
+}
+
+// ---- the page: render INSTANTLY from cache (or snapshot), refresh in background ----
+app.get('/', (req, res) => {
+  const live = isFresh();
+  const data = live ? cache.data : (cache.data || SNAPSHOT);
+  if (!live) warm();                                  // start a background pull; don't wait for it
+  const stale = !live && !!WINDSOR_KEY;               // we served snapshot but real data is on the way
+  const inject = 'const DATA=' + JSON.stringify(data) + ';window.__STALE__=' + (stale ? 'true' : 'false') + ';';
+  res.set('Cache-Control', 'no-store');               // always serve the latest page, never a cached copy
+  res.type('html').send(TEMPLATE.replace('/*__DATA__*/', inject));
 });
+
+// ---- lightweight readiness check the page polls after a cold start (non-blocking) ----
+app.get('/api/ready', (req, res) => res.json({ ready: isFresh() }));
 
 // ---- live data as JSON (handy for testing the Windsor wiring) ----
 app.get('/api/ga4', async (req, res) => {
@@ -229,5 +258,6 @@ app.post('/api/ask', async (req, res) => {
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log('BBZ dashboard on http://localhost:' + PORT));
+  warm(); // pre-pull live data at startup so the first visit is already live
 }
 export default app;
