@@ -58,6 +58,28 @@
   .ss{font-size:10.5px;color:var(--gold-dk);letter-spacing:.16em;text-transform:uppercase;margin-top:5px;font-weight:700}
   .subhead{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);font-weight:700;margin:30px 0 12px;display:flex;align-items:center;gap:10px}
   .subhead::after{content:"";flex:1;height:1px;background:var(--line2)}
+  .block{background:#fff;border:1px solid #e4e0d7;border-radius:16px;padding:6px 24px 26px;margin:30px 0;box-shadow:0 1px 2px rgba(16,17,21,.04),0 24px 54px -36px rgba(16,17,21,.32)}
+  .block .sechead{margin:0 -24px 20px;padding:19px 24px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#faf9f6,#fff);border-radius:16px 16px 0 0}
+  .block .card{box-shadow:none;border-color:#ece9e2;background:#fcfbf9}
+  .block .kpi{box-shadow:none;border-color:#ece9e2;background:#fcfbf9}
+  .block .subhead:first-of-type{margin-top:6px}
+  .exec{background:linear-gradient(180deg,#fbf7ee,#fff);border:1px solid #e7dcc1;border-radius:14px;padding:16px 20px;margin:24px 0 6px;box-shadow:0 1px 2px rgba(16,17,21,.04),0 20px 44px -34px rgba(16,17,21,.3)}
+  .exec-h{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+  .exec-h span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dk);font-weight:700}
+  .exec-btn{font-family:var(--sans);font-size:11px;font-weight:700;color:#1a1208;background:var(--gold);border:none;border-radius:6px;padding:6px 13px;cursor:pointer}
+  .exec-btn:disabled{opacity:.5;cursor:default}
+  .exec-b{font-size:13.5px;color:var(--ink);line-height:1.6}
+  .anote{margin-top:16px;background:#fbf7ee;border:1px solid #ece0c6;border-left:3px solid var(--gold);border-radius:9px;padding:13px 15px}
+  .anote-h{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dk);font-weight:700;margin-bottom:6px}
+  .anote-b{font-size:12.5px;color:var(--ink);line-height:1.6}
+  .anote-b[data-empty]{color:var(--muted)}
+  .qa{margin-top:4px}
+  .qa-row{display:flex;gap:8px}
+  .qa-in{flex:1;font-family:var(--sans);font-size:13px;padding:10px 13px;border:1px solid var(--line);border-radius:8px;color:var(--ink)}
+  .qa-in:focus{outline:none;border-color:var(--gold)}
+  .qa-btn{font-family:var(--sans);font-size:13px;font-weight:700;color:#fff;background:var(--black);border:none;border-radius:8px;padding:10px 22px;cursor:pointer}
+  .qa-ans{font-size:13px;color:var(--ink);line-height:1.65;margin-top:13px;white-space:pre-wrap}
+  .qa-ans:empty{display:none}
 
 
   .grid{display:grid;gap:14px}
@@ -136,7 +158,12 @@
 </div>
 
 <div class="wrap">
-  <div class="sechead" style="margin-top:26px"><div class="secnum">1</div><div><div class="tt">Google Analytics 4</div><div class="ss">Website Performance</div></div></div>
+  <div class="exec">
+    <div class="exec-h"><span>Executive Summary</span><button class="exec-btn" id="anBtn">Update analysis</button></div>
+    <div class="exec-b" id="execSum" data-empty="1">A marketing summary of this view appears here on the live dashboard.</div>
+  </div>
+  <section class="block">
+  <div class="sechead"><div class="secnum">1</div><div><div class="tt">Google Analytics 4</div><div class="ss">Website Performance</div></div></div>
   <div class="grid g5" id="kpis"></div>
 
   <div class="subhead">Traffic Trend</div>
@@ -160,6 +187,9 @@
   <div class="card"><h3>Key-event volume — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="keBar"></canvas></div>
     <div class="legend" id="keLeg"></div></div>
 
+  <div class="anote" id="anGa4"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
+  </section>
+  <section class="block">
   <div class="sechead"><div class="secnum">2</div><div><div class="tt">Google Ads</div><div class="ss">Paid Search</div></div></div>
   <div class="note" id="gadsNote"></div>
   <div class="grid g4" id="gadsKpis" style="margin-bottom:14px"></div>
@@ -168,6 +198,9 @@
     <div class="card"><h3>Campaign detail — current window</h3><table id="gadsTable"></table></div>
   </div>
 
+  <div class="anote" id="anGads"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
+  </section>
+  <section class="block">
   <div class="sechead"><div class="secnum">3</div><div><div class="tt">Meta Ads</div><div class="ss">Paid Social</div></div></div>
   <div class="note" id="metaNote"></div>
   <div class="grid g4" id="metaKpis" style="margin-bottom:14px"></div>
@@ -176,20 +209,40 @@
     <div class="card"><h3>Campaign detail — current window</h3><table id="metaTable"></table></div>
   </div>
 
+  <div class="anote" id="anMeta"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
+  </section>
+  <section class="block">
   <div class="sechead"><div class="secnum">4</div><div><div class="tt">Google Business Profile</div><div class="ss">Local Presence</div></div></div>
   <div class="note" id="gbpNote"></div>
   <div class="grid g4" id="gbpKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Profile impressions — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="gbpTrend"></canvas></div></div>
 
+  <div class="anote" id="anGbp"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
+  </section>
+  <section class="block">
   <div class="sechead"><div class="secnum">5</div><div><div class="tt">Phone Calls</div><div class="ss">Call Tracking · CallRail</div></div></div>
   <div class="note" id="crNote"></div>
   <div class="grid g4" id="crKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Call volume — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
 
+  <div class="anote" id="anCr"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
+  </section>
+  <section class="block">
   <div class="sechead"><div class="secnum">6</div><div><div class="tt">Search Console</div><div class="ss">Organic Search</div></div></div>
   <div class="note" id="scNote"></div>
   <div class="grid g4" id="scKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Organic clicks &amp; avg position — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="scTrend"></canvas></div></div>
+
+  <div class="anote" id="anSc"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
+  </section>
+
+  <section class="block">
+  <div class="sechead"><div class="secnum" style="background:var(--gold);color:#1a1208">?</div><div><div class="tt">Ask this report</div><div class="ss">Free-form questions across every channel</div></div></div>
+  <div class="qa">
+    <div class="qa-row"><input class="qa-in" placeholder="e.g. Which channel improved most this period, and where should I shift budget?"><button class="qa-btn">Ask</button></div>
+    <div class="qa-ans"></div>
+  </div>
+  </section>
 
   <footer id="foot"></footer>
 </div>
@@ -414,6 +467,40 @@ document.querySelectorAll('select').forEach(s=>s.addEventListener('change',rende
   if(f&&t){f.min=t.min=toI(lo);f.max=t.max=toI(hi);
     f.addEventListener('change',render);t.addEventListener('change',render);}})();
 render();
+
+// ---- AI marketing analysis (auto on load; refresh on demand) ----
+const AN_IDS={ga4:'anGa4',gads:'anGads',meta:'anMeta',gbp:'anGbp',callrail:'anCr',searchconsole:'anSc'};
+let anBusy=false;
+function setNote(id,txt,empty){const e=document.querySelector('#'+id+' .anote-b');if(!e)return;e.textContent=txt;if(empty)e.setAttribute('data-empty','1');else e.removeAttribute('data-empty');}
+async function generateAnalysis(){
+  if(anBusy)return; anBusy=true;
+  const btn=document.getElementById('anBtn'); if(btn){btn.disabled=true;btn.textContent='Analyzing…';}
+  Object.values(AN_IDS).forEach(id=>setNote(id,'Analyzing…',false));
+  const es=document.getElementById('execSum'); if(es){es.textContent='Analyzing…';es.removeAttribute('data-empty');}
+  try{
+    const r=await fetch('/api/analyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({context:window.__SNAP||''})});
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error?JSON.stringify(j.error).slice(0,200):r.status);
+    for(const k in AN_IDS)setNote(AN_IDS[k], j[k]||'No notable change in this view.', false);
+    if(es)es.textContent=j.summary||'';
+  }catch(e){
+    const msg='Analysis runs on the live dashboard (needs the server connection).';
+    Object.values(AN_IDS).forEach(id=>setNote(id,msg,true));
+    if(es){es.textContent=msg;es.setAttribute('data-empty','1');}
+  }finally{anBusy=false; if(btn){btn.disabled=false;btn.textContent='Update analysis';}}
+}
+const anBtnEl=document.getElementById('anBtn'); if(anBtnEl)anBtnEl.onclick=generateAnalysis;
+generateAnalysis();
+
+// ---- single Ask box (free-form Q&A across the whole view) ----
+(function(){const box=document.querySelector('.qa');if(!box)return;const inp=box.querySelector('.qa-in'),ans=box.querySelector('.qa-ans');
+  box.querySelector('.qa-btn').onclick=()=>askView(inp,ans);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')askView(inp,ans);});})();
+async function askView(inp,ans){const q=inp.value.trim();if(!q)return;ans.textContent='Thinking…';
+  try{const r=await fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:q,context:window.__SNAP})});const j=await r.json();
+    ans.textContent=r.ok?(j.text||'No answer returned.'):'Error: '+(j.error?JSON.stringify(j.error).slice(0,200):r.status);
+  }catch(e){ans.textContent='Could not reach the server ('+e.message+').';}}
+
 
 document.getElementById('foot').innerHTML=`<b>Source:</b> Google Analytics 4 (property 309061594) via Windsor.ai, pulled live. Monthly grain, Jun 2024–Jun 2026. &nbsp; <b>Notes:</b> Bot/data-center traffic (Singapore, Lanzhou, Gansu, Ashburn, etc.) is filtered out. <b>request_a_quote</b> only recorded data in Jan–Feb 2026 and <b>lead_form</b> began Jan 2026 — earlier zeros reflect tracking not yet live, not a true decline. Minor channels under ~30 sessions/month are excluded, so monthly totals run ~1% below the platform figure. "This Month" (Jun 2026) is partial.`;
 </script>

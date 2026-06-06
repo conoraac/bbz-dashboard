@@ -254,6 +254,38 @@ app.post('/api/ask', async (req, res) => {
 });
 
 
+// ---- AI marketing analysis: all six section notes + summary in ONE cached call ----
+const analysisCache = new Map();
+app.post('/api/analyze', async (req, res) => {
+  if (!ANTHROPIC_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY not set on the server.' });
+  const { context } = req.body || {};
+  if (!context) return res.status(400).json({ error: 'Missing context.' });
+  if (analysisCache.has(context)) return res.json(analysisCache.get(context));
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: MODEL, max_tokens: 1000, messages: [{ role: 'user', content:
+        `You are a senior marketing analyst at Astoria Advertising Company reviewing BBZ Limousine's live performance `
+        + `data for the current reporting window. Using ONLY the data below, write a brief marketing read for each `
+        + `channel: what the numbers indicate and the single most useful next action. Be specific with figures, plain `
+        + `spoken, no jargon, no markdown, 2 to 3 sentences each. Do not use em dashes.\n\n${context}\n\n`
+        + `Respond with ONLY a JSON object (no preamble, no code fences) with exactly these string keys: `
+        + `"ga4", "gads", "meta", "gbp", "callrail", "searchconsole", "summary". "summary" is a 2 to 3 sentence `
+        + `executive takeaway across all channels. If a channel shows no data, give a one sentence note that it is not yet reporting.` }] })
+    });
+    const j = await r.json();
+    if (!r.ok) return res.status(r.status).json({ error: j });
+    let txt = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    txt = txt.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+    let out; try { out = JSON.parse(txt); } catch { out = { summary: txt }; }
+    analysisCache.set(context, out);
+    if (analysisCache.size > 50) analysisCache.delete(analysisCache.keys().next().value);
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
+
 // Railway / local: listen.  Vercel: the app is exported and invoked per-request.
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
