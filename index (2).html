@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BBZ Limousine — Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --black:#0d0d0f;--char:#161719;--ink:#24262b;--ink2:#585c64;--muted:#9a9ea6;--faint:#bcbfc5;
+    --gold:#c0a35e;--gold-lt:#dcc28d;--gold-dk:#a3884a;--paper:#fff;--bg:#ffffff;--line:#e7e3db;--line2:#f0ede7;
+    --pos:#3f9e74;--neg:#cf6b5f;--flatbg:#eceef0;--flat:#8b8f97;
+    --c1:#c0a35e;--c2:#2b2d33;--c3:#6e8298;--c4:#8a9b7e;--c5:#b5835f;--c6:#9a7e8d;--c7:#88939b;--c8:#d3c08f;--c9:#6f6280;
+    --serif:'Fraunces',Georgia,serif;--sans:'Hanken Grotesk',-apple-system,Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px 70px}
+
+  /* header */
+  header{background:var(--black);color:#fff;margin-bottom:0}
+  .hd{max-width:1180px;margin:0 auto;padding:26px 24px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+  .bbzmark{text-align:left;line-height:1;color:#fff}
+  .bbzmark .est{font-size:7px;letter-spacing:.34em;color:var(--gold);margin-bottom:3px}
+  .bbzmark .w{font-family:var(--serif);font-weight:600;font-size:34px;letter-spacing:.06em}
+  .bbzmark .rule{height:1px;background:var(--gold);margin:3px 0 4px;width:100%}
+  .bbzmark .sub{font-size:7.5px;letter-spacing:.26em;color:#cfd2d6}
+  .hd .r{text-align:right}
+  .hd .r .t{font-family:var(--serif);font-size:20px;color:#fff}
+  .hd .r .s{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-top:4px}
+  .hd .r .aac{font-size:8px;letter-spacing:.28em;color:#8a8d92;text-transform:uppercase;margin-top:8px}
+
+  /* filter bar */
+  .filters{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);box-shadow:0 2px 14px rgba(20,20,24,.06)}
+  .fb{max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-dk);font-weight:700}
+  select{font-family:var(--sans);font-size:12.5px;color:var(--ink);background:#fff;border:1px solid var(--line);
+    border-radius:7px;padding:7px 28px 7px 11px;font-weight:600;cursor:pointer;appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23a3884a' stroke-width='1.5' fill='none'/></svg>");
+    background-repeat:no-repeat;background-position:right 10px center}
+  select:focus{outline:none;border-color:var(--gold)}
+  .mInput{font-family:var(--sans);font-size:12.5px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-weight:600;cursor:pointer}
+  .mInput:focus{outline:none;border-color:var(--gold)}
+
+  .ctx{max-width:1180px;margin:0 auto;padding:16px 24px 4px}
+  .ctx .lead{font-family:var(--serif);font-size:22px;color:var(--ink)}
+  .ctx .lead b{color:var(--gold-dk)}
+  .ctx .note{font-size:12px;color:var(--ink2);margin-top:3px}
+
+  .sechead{display:flex;align-items:center;gap:14px;margin:56px 0 18px;padding-bottom:15px;border-bottom:1px solid var(--line)}
+  .secnum{width:30px;height:30px;border-radius:50%;background:var(--black);color:var(--gold-lt);font-family:var(--serif);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .tt{font-family:var(--serif);font-size:23px;font-weight:600;color:var(--ink);line-height:1.05;letter-spacing:.005em}
+  .ss{font-size:10.5px;color:var(--gold-dk);letter-spacing:.16em;text-transform:uppercase;margin-top:5px;font-weight:700}
+  .subhead{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);font-weight:700;margin:30px 0 12px;display:flex;align-items:center;gap:10px}
+  .subhead::after{content:"";flex:1;height:1px;background:var(--line2)}
+
+
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+  .card{background:#fff;border:1px solid #e6e2da;border-radius:10px;padding:18px;box-shadow:0 1px 2px rgba(16,17,21,.04),0 12px 28px -18px rgba(16,17,21,.20)}
+  .card h3{font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:14px}
+
+  .kpi{background:#fff;border:1px solid #e6e2da;border-radius:10px;padding:15px 16px;border-top:2px solid var(--line);box-shadow:0 1px 2px rgba(16,17,21,.04),0 12px 28px -18px rgba(16,17,21,.18)}
+  .kpi.on{border-top-color:var(--gold);box-shadow:0 6px 20px -10px rgba(192,163,94,.5)}
+  .kpi .l{font-size:10.5px;color:var(--ink2);font-weight:600}
+  .kpi .v{font-family:var(--serif);font-size:30px;font-weight:500;color:var(--ink);margin:7px 0 5px;letter-spacing:-.01em}
+  .kpi .d{font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+  .kpi .d .vs{color:var(--muted);font-weight:500}
+  .up{color:var(--pos)}.dn{color:var(--neg)}.flat{color:var(--flat)}
+
+  .chartwrap{position:relative;width:100%}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .legend span{font-size:10px;color:var(--ink2);display:flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+  table{width:100%;border-collapse:collapse}
+  th{font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;text-align:right;padding:7px 8px;border-bottom:1.5px solid var(--gold)}
+  th:first-child{text-align:left}
+  td{font-size:12px;padding:8px;text-align:right;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums}
+  td:first-child{text-align:left;font-weight:600}
+  .barcell{position:relative}.minibar{height:4px;border-radius:3px;background:linear-gradient(90deg,var(--gold-dk),var(--gold));margin-top:4px}
+
+  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.6}
+  footer b{color:var(--ink2)}
+  @media(max-width:820px){.g4,.g5,.g3,.g2{grid-template-columns:1fr 1fr}.fb{gap:10px}}
+  .connect{background:#14151a;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 24px;font-size:11px;color:#e8e9ec;border-bottom:2px solid var(--gold)}
+  .connect .lab{color:var(--gold-lt);letter-spacing:.1em;font-weight:700;text-transform:uppercase;font-size:10px}
+  .connect input,.connect select{font-family:var(--sans);font-size:11px;padding:6px 10px;border:1px solid #3a3b40;border-radius:5px;background:#0d0d0f;color:#fff}
+  .connect input{min-width:240px}
+  .connect button{font-family:var(--sans);font-size:11px;font-weight:700;background:var(--gold);color:#1a1208;border:none;border-radius:5px;padding:6px 15px;cursor:pointer}
+  .connect .note{color:#8a8d92;font-size:9.5px;flex:1;min-width:200px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div class="bbzmark"><div class="est">EST. 1869</div><div class="w">BBZ</div><div class="rule"></div><div class="sub">LIMOUSINE &amp; LIVERY SERVICE</div></div>
+    <div class="r"><div class="t">Performance Dashboard</div><div class="s">Live · Google Analytics 4</div><div class="aac">Astoria Advertising Company</div></div>
+  </div>
+</header>
+
+<div class="filters"><div class="fb">
+  <div class="field"><label>Time Frame</label><select id="f_tf">
+    <option value="this">This Month</option><option value="last" selected>Last Month</option>
+    <option value="3m">Last 3 Months</option><option value="6m">Last 6 Months</option>
+    <option value="12m">Last 12 Months</option><option value="ytd">Year to Date</option>
+    <option value="custom">Custom range…</option></select></div>
+  <div class="field" id="customWrap" style="display:none">
+    <label>Custom range</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input type="month" id="f_from" class="mInput">
+      <span style="color:var(--muted);font-size:11px">to</span>
+      <input type="month" id="f_to" class="mInput">
+    </div>
+  </div>
+  <div class="field"><label>Compare to</label><select id="f_cmp">
+    <option value="year" selected>Previous Year</option><option value="period">Previous Period</option></select></div>
+  <div class="field"><label>Metric</label><select id="f_metric">
+    <option value="0" selected>Sessions</option><option value="1">Total Users</option><option value="2">Views</option>
+    <option value="3">Events (Event Count)</option><option value="4">Key Events</option></select></div>
+  <div class="field"><label>Channel</label><select id="f_ch"></select></div>
+  <div class="field"><label>Region</label><select id="f_reg"></select></div>
+  <div class="field"><label>City</label><select id="f_city"></select></div>
+  <div class="field"><label>Key Event</label><select id="f_ke"></select></div>
+</div></div>
+
+<div class="ctx">
+  <div class="lead" id="ctxLead"></div>
+  <div class="note" id="ctxNote"></div>
+</div>
+
+<div class="wrap">
+  <div class="sechead" style="margin-top:26px"><div class="secnum">1</div><div><div class="tt">Google Analytics 4</div><div class="ss">Website Performance</div></div></div>
+  <div class="grid g5" id="kpis"></div>
+
+  <div class="subhead">Traffic Trend</div>
+  <div class="card"><h3 id="trendTitle"></h3><div class="chartwrap" style="height:280px"><canvas id="trend"></canvas></div>
+    <div class="legend" id="trendLeg"></div></div>
+
+  <div class="subhead">Acquisition by Channel</div>
+  <div class="grid g2">
+    <div class="card"><h3 id="chTitle"></h3><div class="chartwrap" style="height:260px"><canvas id="chBar"></canvas></div></div>
+    <div class="card"><h3>Channel detail</h3><table id="chTable"></table></div>
+  </div>
+
+  <div class="subhead">Geography</div>
+  <div class="grid g2">
+    <div class="card"><h3 id="regTitle">Sessions by Region</h3><div class="chartwrap" style="height:230px"><canvas id="regBar"></canvas></div></div>
+    <div class="card"><h3 id="cityTitle">Sessions by City</h3><div class="chartwrap" style="height:230px"><canvas id="cityBar"></canvas></div></div>
+  </div>
+
+  <div class="subhead">Key Events &amp; Conversions</div>
+  <div class="grid g4" id="keKpis" style="margin-bottom:14px"></div>
+  <div class="card"><h3>Key-event volume — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="keBar"></canvas></div>
+    <div class="legend" id="keLeg"></div></div>
+
+  <div class="sechead"><div class="secnum">2</div><div><div class="tt">Google Ads</div><div class="ss">Paid Search</div></div></div>
+  <div class="note" id="gadsNote"></div>
+  <div class="grid g4" id="gadsKpis" style="margin-bottom:14px"></div>
+  <div class="grid g2">
+    <div class="card"><h3 id="gadsTrendTitle">Spend &amp; conversions — trailing 12 months</h3><div class="chartwrap" style="height:250px"><canvas id="gadsTrend"></canvas></div><div class="legend" id="gadsLeg"></div></div>
+    <div class="card"><h3>Campaign detail — current window</h3><table id="gadsTable"></table></div>
+  </div>
+
+  <div class="sechead"><div class="secnum">3</div><div><div class="tt">Meta Ads</div><div class="ss">Paid Social</div></div></div>
+  <div class="note" id="metaNote"></div>
+  <div class="grid g4" id="metaKpis" style="margin-bottom:14px"></div>
+  <div class="grid g2">
+    <div class="card"><h3 id="metaTrendTitle">Spend &amp; leads — trailing 12 months</h3><div class="chartwrap" style="height:250px"><canvas id="metaTrend"></canvas></div><div class="legend" id="metaLeg"></div></div>
+    <div class="card"><h3>Campaign detail — current window</h3><table id="metaTable"></table></div>
+  </div>
+
+  <div class="sechead"><div class="secnum">4</div><div><div class="tt">Google Business Profile</div><div class="ss">Local Presence</div></div></div>
+  <div class="note" id="gbpNote"></div>
+  <div class="grid g4" id="gbpKpis" style="margin-bottom:14px"></div>
+  <div class="card"><h3>Profile impressions — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="gbpTrend"></canvas></div></div>
+
+  <div class="sechead"><div class="secnum">5</div><div><div class="tt">Phone Calls</div><div class="ss">Call Tracking · CallRail</div></div></div>
+  <div class="note" id="crNote"></div>
+  <div class="grid g4" id="crKpis" style="margin-bottom:14px"></div>
+  <div class="card"><h3>Call volume — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
+
+  <div class="sechead"><div class="secnum">6</div><div><div class="tt">Search Console</div><div class="ss">Organic Search</div></div></div>
+  <div class="note" id="scNote"></div>
+  <div class="grid g4" id="scKpis" style="margin-bottom:14px"></div>
+  <div class="card"><h3>Organic clicks &amp; avg position — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="scTrend"></canvas></div></div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+/*__DATA__*/
+const C=getComputedStyle(document.documentElement),col=n=>C.getPropertyValue('--'+n).trim();
+const PAL=['c1','c2','c3','c4','c5','c6','c7','c8','c9'].map(col);
+Chart.defaults.font.family="'Hanken Grotesk',Arial,sans-serif";Chart.defaults.font.size=10;Chart.defaults.color='#9a9ea6';
+Chart.defaults.plugins.legend.display=false;Chart.defaults.maintainAspectRatio=false;Chart.defaults.animation={duration:300};
+
+const METRICS=[['Sessions',0],['Total Users',1],['Views',2],['Event Count',3],['Key Events',4]];
+const KE_LABELS=['Inbound Call','Lead Form','LiveryCoach Booked','Request a Quote'];
+const GADS_KPI=[['Cost',2,'$'],['Clicks',0,''],['Conversions',3,''],['CPA',-1,'$']];
+const META_KPI=[['Spend',2,'$'],['Leads',3,''],['Clicks',0,''],['CPL',-1,'$']];
+function money(n){n=n||0;return '$'+(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:n<100?2:0});}
+function sumPaid(src,win,idx){let t=0;win.forEach(ym=>{const d=src&&src.data[ym];if(!d)return;Object.values(d).forEach(a=>t+=(a[idx]||0));});return t;}
+function paidBreak(src,win){const m={};win.forEach(ym=>{const d=src&&src.data[ym];if(!d)return;Object.entries(d).forEach(([c,a])=>{const x=m[c]=m[c]||[0,0,0,0,0];for(let i=0;i<a.length;i++)x[i]+=(a[i]||0);});});return Object.entries(m).sort((p,q)=>q[1][2]-p[1][2]);}
+function sumArr(src,win,idx){let t=0;win.forEach(ym=>{const a=src&&src.data&&src.data[ym];if(a)t+=(a[idx]||0);});return t;}
+function hasData(src){return !!(src&&src.months&&src.months.length&&!src.empty);}
+function phState(noteId,kpiId,msg){const n=document.getElementById(noteId);if(n)n.textContent=msg;const k=document.getElementById(kpiId);if(k)k.innerHTML='<div class="kpi" style="grid-column:1/-1;opacity:.7"><div class="l">Updating</div><div class="v" style="font-size:15px;font-weight:600">\u2014</div><div class="d">Refreshing shortly</div></div>';}
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ANCHOR=DATA.current;
+function ymAdd(ym,d){let y=+ym.slice(0,4),m=+ym.slice(4)-1,t=y*12+m+d;return String(Math.floor(t/12)).padStart(4,'0')+String((t%12)+1).padStart(2,'0');}
+function ymLabel(ym){return MON[+ym.slice(4)-1]+" '"+ym.slice(2,4);}
+function rangeEnd(end,n){let a=[];for(let i=n-1;i>=0;i--)a.push(ymAdd(end,-i));return a;}
+function fmt(n){return Math.round(n).toLocaleString('en-US');}
+
+function windowMonths(tf){
+  if(tf==='this')return[ymAdd(ANCHOR,1)];
+  if(tf==='last')return[ANCHOR];
+  if(tf==='3m')return rangeEnd(ANCHOR,3);
+  if(tf==='6m')return rangeEnd(ANCHOR,6);
+  if(tf==='12m')return rangeEnd(ANCHOR,12);
+  if(tf==='ytd'){let y=ANCHOR.slice(0,4),mm=+ANCHOR.slice(4),a=[];for(let m=1;m<=mm;m++)a.push(y+String(m).padStart(2,'0'));return a;}
+  if(tf==='custom'){
+    let f=document.getElementById('f_from').value, t=document.getElementById('f_to').value;
+    if(!f||!t)return[ANCHOR];
+    let a=f.replace('-',''), b=t.replace('-','');
+    if(a>b){let x=a;a=b;b=x;}
+    let arr=[],cur=a,g=0;while(cur<=b&&g<240){arr.push(cur);cur=ymAdd(cur,1);g++;}
+    return arr.length?arr:[ANCHOR];
+  }
+}
+function compWindow(win,cmp){
+  if(cmp==='year')return win.map(m=>ymAdd(m,-12));
+  let n=win.length,st=ymAdd(win[0],-n),a=[];for(let i=0;i<n;i++)a.push(ymAdd(st,i));return a;
+}
+function sumCh(win,idx,chf){let t=0;win.forEach(ym=>{let d=DATA.chm[ym];if(!d)return;if(chf==='All')Object.values(d).forEach(a=>t+=a[idx]);else if(d[chf])t+=d[chf][idx];});return t;}
+function sumKE(win,idx){let t=0;win.forEach(ym=>{let a=DATA.ke[ym];if(a)t+=a[idx];});return t;}
+function sumGeo(map,win,name){let s=0,k=0;win.forEach(ym=>{let d=map[ym];if(!d)return;if(name==='All')Object.values(d).forEach(a=>{s+=a[0];k+=a[1];});else if(d[name]){s+=d[name][0];k+=d[name][1];}});return[s,k];}
+function geoBreak(map,names,win){return names.map(n=>{let s=0;win.forEach(ym=>{let d=map[ym];if(d&&d[n])s+=d[n][0];});return[n,s];}).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);}
+
+function delta(cur,prev){if(prev===0)return cur>0?{t:'New',c:'up'}:{t:'—',c:'flat'};
+  let p=(cur-prev)/prev*100;return{t:(p>=0?'▲ ':'▼ ')+Math.abs(p).toFixed(p>=100||Math.abs(p)<10?0:0)+'%',c:p>=0?'up':'dn'};}
+
+// populate selects
+const fch=document.getElementById('f_ch');fch.innerHTML='<option value="All">All Channels</option>'+DATA.channels.map(c=>`<option>${c}</option>`).join('');
+const freg=document.getElementById('f_reg');freg.innerHTML='<option value="All">All Regions</option>'+DATA.regNames.filter(n=>n!=='Other').map(c=>`<option>${c}</option>`).join('');
+const fcity=document.getElementById('f_city');fcity.innerHTML='<option value="All">All Cities</option>'+DATA.cityNames.filter(n=>n!=='Other').map(c=>`<option>${c}</option>`).join('');
+const fke=document.getElementById('f_ke');fke.innerHTML='<option value="all">All Key Events</option>'+KE_LABELS.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
+
+let charts={};
+function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
+
+function render(){
+  const tf=document.getElementById('f_tf').value, cmp=document.getElementById('f_cmp').value,
+        mIdx=+document.getElementById('f_metric').value, chf=document.getElementById('f_ch').value,
+        regf=document.getElementById('f_reg').value, cityf=document.getElementById('f_city').value;
+  const kef=document.getElementById('f_ke').value, keSel=kef==='all'?null:+kef;
+  const cw=document.getElementById('customWrap');
+  if(cw)cw.style.display=tf==='custom'?'':'none';
+  if(tf==='custom'){const ff=document.getElementById('f_from'),tt=document.getElementById('f_to');
+    const toI=ym=>ym.slice(0,4)+'-'+ym.slice(4);
+    if(!ff.value||!tt.value){ff.value=toI(ymAdd(ANCHOR,-2));tt.value=toI(ANCHOR);}}
+  const win=windowMonths(tf), comp=compWindow(win,cmp);
+  const mName=METRICS[mIdx][0];
+  const tfLabel={this:'This Month',last:'Last Month','3m':'Last 3 Months','6m':'Last 6 Months','12m':'Last 12 Months',ytd:'Year to Date',custom:'Custom range'}[tf];
+  const winLab=win.length===1?ymLabel(win[0]):ymLabel(win[0])+' – '+ymLabel(win[win.length-1]);
+  const compLab=comp.length===1?ymLabel(comp[0]):ymLabel(comp[0])+' – '+ymLabel(comp[comp.length-1]);
+
+  document.getElementById('ctxLead').innerHTML=`${tfLabel}: <b>${winLab}</b> &nbsp;vs&nbsp; ${cmp==='year'?'Previous Year':'Previous Period'}: <b>${compLab}</b>`;
+  document.getElementById('ctxNote').textContent=`Showing ${(mIdx===4&&keSel!==null)?KE_LABELS[keSel]:mName}${chf!=='All'?' · '+chf:''}. Deltas compare the two windows above.`;
+
+  // KPI row
+  document.getElementById('kpis').innerHTML=METRICS.map(([nm,ix])=>{
+    let cur,prev,label=nm;
+    if(ix===4&&keSel!==null){cur=sumKE(win,keSel);prev=sumKE(comp,keSel);label=KE_LABELS[keSel];}
+    else{cur=sumCh(win,ix,chf);prev=sumCh(comp,ix,chf);}
+    let d=delta(cur,prev);
+    return `<div class="kpi ${ix===mIdx?'on':''}"><div class="l">${label}</div><div class="v">${fmt(cur)}</div>
+      <div class="d ${d.c}">${d.t} <span class="vs">vs ${fmt(prev)}</span></div></div>`;}).join('');
+
+  // Trend: trailing up to 12 months ending at window end
+  const endM=win[win.length-1], span=Math.max(12,win.length), tMonths=rangeEnd(endM,span);
+  const isKE=mIdx===4&&keSel!==null;
+  const curSeries=tMonths.map(ym=>isKE?sumKE([ym],keSel):sumCh([ym],mIdx,chf));
+  const cmpSeries=tMonths.map(ym=>{const pm=cmp==='year'?ymAdd(ym,-12):ymAdd(ym,-span);return isKE?sumKE([pm],keSel):sumCh([pm],mIdx,chf);});
+  const trendName=isKE?KE_LABELS[keSel]:mName;
+  document.getElementById('trendTitle').textContent=`${trendName}${(!isKE&&chf!=='All')?' · '+chf:''} — trailing ${span} months`;
+  mkChart('trend',{type:'line',data:{labels:tMonths.map(ymLabel),datasets:[
+    {data:curSeries,borderColor:col('gold-dk'),backgroundColor:'rgba(192,163,94,.12)',fill:true,borderWidth:2,tension:.35,pointRadius:0,pointHoverRadius:4},
+    {data:cmpSeries,borderColor:'#c4c8cd',borderWidth:1.5,borderDash:[4,3],tension:.35,pointRadius:0}
+  ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{enabled:true,backgroundColor:'#1c1c22'}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'#f1efe9'},beginAtZero:true}}}});
+  document.getElementById('trendLeg').innerHTML=`<span><i style="background:${col('gold-dk')}"></i>Current window basis</span><span><i style="background:#c4c8cd"></i>${cmp==='year'?'Previous year':'Previous period'}</span>`;
+
+  // Channel breakdown (selected metric over window)
+  const chBreak=DATA.channels.map(c=>[c,sumCh(win,mIdx,c)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('chTitle').textContent=`${mName} by Channel — ${winLab}`;
+  mkChart('chBar',{type:'bar',data:{labels:chBreak.map(x=>x[0]),datasets:[{data:chBreak.map(x=>x[1]),
+    backgroundColor:chBreak.map(x=>x[0]===chf?col('gold'):col('c2')),borderRadius:4,barThickness:15}]},
+    options:{indexAxis:'y',plugins:{tooltip:{enabled:true}},scales:{x:{grid:{color:'#f1efe9'},beginAtZero:true},y:{grid:{display:false}}}}});
+  const chTot=chBreak.reduce((a,x)=>a+x[1],0)||1;
+  document.getElementById('chTable').innerHTML='<thead><tr><th>Channel</th><th>'+mName+'</th><th>Share</th><th>vs Comp</th></tr></thead><tbody>'+
+    chBreak.map(([c,v])=>{let pv=sumCh(comp,mIdx,c),d=delta(v,pv);
+      return `<tr><td>${c}</td><td>${fmt(v)}</td><td>${(v/chTot*100).toFixed(1)}%</td><td class="${d.c}">${d.t}</td></tr>`;}).join('')+'</tbody>';
+
+  // Geography
+  const regB=geoBreak(DATA.reg,DATA.regNames,win), cityB=geoBreak(DATA.city,DATA.cityNames,win);
+  document.getElementById('regTitle').textContent=regf==='All'?`Sessions by Region — ${winLab}`:`Region: ${regf}`;
+  mkChart('regBar',{type:'bar',data:{labels:regB.map(x=>x[0]),datasets:[{data:regB.map(x=>x[1]),
+    backgroundColor:regB.map(x=>x[0]===regf?col('gold'):col('c3')),borderRadius:4,barThickness:14}]},
+    options:{indexAxis:'y',plugins:{tooltip:{enabled:true}},scales:{x:{grid:{color:'#f1efe9'},beginAtZero:true},y:{grid:{display:false}}}}});
+  document.getElementById('cityTitle').textContent=cityf==='All'?`Sessions by City — ${winLab}`:`City: ${cityf}`;
+  mkChart('cityBar',{type:'bar',data:{labels:cityB.map(x=>x[0]),datasets:[{data:cityB.map(x=>x[1]),
+    backgroundColor:cityB.map(x=>x[0]===cityf?col('gold'):col('c4')),borderRadius:4,barThickness:14}]},
+    options:{indexAxis:'y',plugins:{tooltip:{enabled:true}},scales:{x:{grid:{color:'#f1efe9'},beginAtZero:true},y:{grid:{display:false}}}}});
+
+  // Key events
+  document.getElementById('keKpis').innerHTML=KE_LABELS.map((nm,ix)=>{
+    let cur=sumKE(win,ix),prev=sumKE(comp,ix),d=delta(cur,prev);
+    return `<div class="kpi ${keSel===ix?'on':''}"><div class="l">${nm}</div><div class="v">${fmt(cur)}</div><div class="d ${d.c}">${d.t} <span class="vs">vs ${fmt(prev)}</span></div></div>`;}).join('');
+  const keMonths=rangeEnd(endM,12);
+  const keSet=keSel===null?KE_LABELS.map((nm,ix)=>({nm,ix})):[{nm:KE_LABELS[keSel],ix:keSel}];
+  mkChart('keBar',{type:'bar',data:{labels:keMonths.map(ymLabel),datasets:keSet.map(({nm,ix})=>({
+    label:nm,data:keMonths.map(ym=>sumKE([ym],ix)),backgroundColor:keSel===null?PAL[ix]:col('gold'),stack:'s',borderRadius:2}))},
+    options:{plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false},stacked:true},y:{grid:{color:'#f1efe9'},stacked:true,beginAtZero:true}}}});
+  document.getElementById('keLeg').innerHTML=keSet.map(({nm,ix})=>`<span><i style="background:${keSel===null?PAL[ix]:col('gold')}"></i>${nm}</span>`).join('');
+
+  // geo KPI note when filtered
+  if(regf!=='All'||cityf!=='All'){
+    let parts=[];
+    if(regf!=='All'){let[s,k]=sumGeo(DATA.reg,win,regf),[ps,pk]=sumGeo(DATA.reg,comp,regf);parts.push(`<b>${regf}</b>: ${fmt(s)} sessions (${delta(s,ps).t}), ${fmt(k)} key events`);}
+    if(cityf!=='All'){let[s,k]=sumGeo(DATA.city,win,cityf),[ps,pk]=sumGeo(DATA.city,comp,cityf);parts.push(`<b>${cityf}</b>: ${fmt(s)} sessions (${delta(s,ps).t}), ${fmt(k)} key events`);}
+    document.getElementById('ctxNote').innerHTML=`Showing ${mName}${chf!=='All'?' · '+chf:''}. &nbsp;|&nbsp; ${parts.join(' &nbsp;·&nbsp; ')}`;
+  }
+  // ---- Paid platforms (Google Ads + Meta) — same window/comparison as above ----
+  function paidSection(src,ids,kpis,barCol,lineLab,perLab){
+    const now={}, prev={};
+    [0,2,3].forEach(ix=>{now[ix]=sumPaid(src,win,ix);prev[ix]=sumPaid(src,comp,ix);});
+    now[-1]=now[3]?now[2]/now[3]:0; prev[-1]=prev[3]?prev[2]/prev[3]:0;
+    document.getElementById(ids.kpis).innerHTML=kpis.map(([nm,ix,pre])=>{
+      const cur=now[ix],pv=prev[ix];let d=delta(cur,pv);
+      if(ix===-1)d={t:d.t,c:(cur<=pv?'up':'dn')};
+      const cv=pre==='$'?money(cur):fmt(cur),pp=pre==='$'?money(pv):fmt(pv);
+      return `<div class="kpi"><div class="l">${nm}</div><div class="v">${cv}</div><div class="d ${d.c}">${d.t} <span class="vs">vs ${pp}</span></div></div>`;}).join('');
+    const endM=win[win.length-1],tM=rangeEnd(endM,12);
+    mkChart(ids.trend,{type:'bar',data:{labels:tM.map(ymLabel),datasets:[
+      {type:'bar',label:'Spend',data:tM.map(ym=>sumPaid(src,[ym],2)),backgroundColor:col(barCol),borderRadius:3,yAxisID:'y'},
+      {type:'line',label:lineLab,data:tM.map(ym=>sumPaid(src,[ym],3)),borderColor:col('gold-dk'),borderWidth:2,tension:.35,pointRadius:0,yAxisID:'y1'}
+    ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{enabled:true}},
+      scales:{x:{grid:{display:false}},y:{position:'left',grid:{color:'#f1efe9'},beginAtZero:true},y1:{position:'right',grid:{display:false},beginAtZero:true}}}});
+    document.getElementById(ids.leg).innerHTML=`<span><i style="background:${col(barCol)}"></i>Spend ($)</span><span><i style="background:${col('gold-dk')}"></i>${lineLab}</span>`;
+    const br=paidBreak(src,win);
+    document.getElementById(ids.table).innerHTML='<thead><tr><th>Campaign</th><th>Spend</th><th>Clicks</th><th>'+lineLab+'</th><th>'+perLab+'</th></tr></thead><tbody>'+
+      br.map(([c,a])=>{const cp=a[3]?a[2]/a[3]:0;return `<tr><td>${c}</td><td>${money(a[2])}</td><td>${fmt(a[0])}</td><td>${fmt(a[3])}</td><td>${a[3]?money(cp):'—'}</td></tr>`;}).join('')+'</tbody>';
+    return {now,prev,br};
+  }
+  const gA=paidSection(DATA.gads,{kpis:'gadsKpis',trend:'gadsTrend',leg:'gadsLeg',table:'gadsTable'},GADS_KPI,'c2','Conversions','CPA');
+  const mA=paidSection(DATA.meta,{kpis:'metaKpis',trend:'metaTrend',leg:'metaLeg',table:'metaTable'},META_KPI,'c6','Leads','CPL');
+  document.getElementById('gadsNote').textContent=`Google Ads · BBZ Limo account · ${winLab}. Lower CPA is better. (Channel/Region/City filters apply to GA4 only.)`;
+  document.getElementById('metaNote').textContent=`Meta — Facebook & Instagram · BBZ Limo account · ${winLab}. Lower CPL is better.`;
+  const paidSnap=`Google Ads (current vs comparison): Cost ${money(gA.now[2])} vs ${money(gA.prev[2])}; Conversions ${fmt(gA.now[3])} vs ${fmt(gA.prev[3])}; CPA ${money(gA.now[-1])}. Top campaigns by spend: `+gA.br.slice(0,6).map(x=>`${x[0]} ${money(x[1][2])}/${fmt(x[1][3])} conv`).join(', ')+`.\n`+
+    `Meta (current vs comparison): Spend ${money(mA.now[2])} vs ${money(mA.prev[2])}; Leads ${fmt(mA.now[3])} vs ${fmt(mA.prev[3])}; CPL ${money(mA.now[-1])}. Campaigns: `+mA.br.slice(0,6).map(x=>`${x[0]} ${money(x[1][2])}/${fmt(x[1][3])} leads`).join(', ')+`.`;
+  // ---- Google Business Profile ----
+  (function(){const src=DATA.gbp;
+    if(!hasData(src)){phState('gbpNote','gbpKpis','Google Business Profile data updates automatically and will appear here shortly.');if(charts.gbpTrend)charts.gbpTrend.destroy();return;}
+    const defs=[['Impressions',0],['Calls',1],['Direction Requests',3],['Website Clicks',2]];
+    document.getElementById('gbpKpis').innerHTML=defs.map(([nm,ix])=>{const c=sumArr(src,win,ix),pv=sumArr(src,comp,ix),d=delta(c,pv);return `<div class="kpi"><div class="l">${nm}</div><div class="v">${fmt(c)}</div><div class="d ${d.c}">${d.t} <span class="vs">vs ${fmt(pv)}</span></div></div>`;}).join('');
+    const tM=rangeEnd(win[win.length-1],12);
+    mkChart('gbpTrend',{type:'line',data:{labels:tM.map(ymLabel),datasets:[{label:'Impressions',data:tM.map(ym=>sumArr(src,[ym],0)),borderColor:col('c3'),borderWidth:2,tension:.35,pointRadius:0}]},options:{plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f1efe9'},beginAtZero:true}}}});
+    document.getElementById('gbpNote').innerHTML=`Google Business Profile \u00b7 BBZ Limo Service NJ \u00b7 ${winLab}. &nbsp;\u2605 ${src.rating?src.rating.toFixed(1):'\u2014'} rating \u00b7 ${fmt(src.reviews||0)} reviews.`;})();
+  // ---- CallRail ----
+  (function(){const src=DATA.callrail;
+    if(!hasData(src)){phState('crNote','crKpis','Call tracking data updates automatically and will appear here shortly.');if(charts.crTrend)charts.crTrend.destroy();return;}
+    const tot=sumArr(src,win,0),ans=sumArr(src,win,1),fst=sumArr(src,win,2),ptot=sumArr(src,comp,0),pans=sumArr(src,comp,1);
+    const rate=tot?Math.round(ans/tot*100):0,prate=ptot?Math.round(pans/ptot*100):0;
+    const rows=[['Total Calls',fmt(tot),delta(tot,ptot)],['Answered',fmt(ans),delta(ans,pans)],['Answer Rate',rate+'%',delta(rate,prate)],['First-Time',fmt(fst),delta(fst,sumArr(src,comp,2))]];
+    document.getElementById('crKpis').innerHTML=rows.map(([nm,v,d])=>`<div class="kpi"><div class="l">${nm}</div><div class="v">${v}</div><div class="d ${d.c}">${d.t}</div></div>`).join('');
+    const tM=rangeEnd(win[win.length-1],12);
+    mkChart('crTrend',{type:'bar',data:{labels:tM.map(ymLabel),datasets:[{label:'Calls',data:tM.map(ym=>sumArr(src,[ym],0)),backgroundColor:col('c1'),borderRadius:3}]},options:{plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f1efe9'},beginAtZero:true}}}});
+    document.getElementById('crNote').textContent=`CallRail \u00b7 BBZ \u00b7 ${winLab}.`;})();
+  // ---- Search Console ----
+  (function(){const src=DATA.searchconsole;
+    if(!hasData(src)){phState('scNote','scKpis','Search Console data updates automatically and will appear here shortly.');if(charts.scTrend)charts.scTrend.destroy();return;}
+    function wpos(w){let n=0,d=0;w.forEach(ym=>{const a=src.data[ym];if(a){n+=a[2]*a[1];d+=a[1];}});return d?n/d:0;}
+    const clk=sumArr(src,win,0),imp=sumArr(src,win,1),pclk=sumArr(src,comp,0),pimp=sumArr(src,comp,1);
+    const pos=wpos(win),ppos=wpos(comp),ctr=imp?clk/imp*100:0,pctr=pimp?pclk/pimp*100:0;
+    const rows=[['Clicks',fmt(clk),delta(clk,pclk)],['Impressions',fmt(imp),delta(imp,pimp)],['CTR',ctr.toFixed(1)+'%',delta(ctr,pctr)],['Avg Position',pos?pos.toFixed(1):'—',{t:delta(pos,ppos).t,c:(pos<=ppos?'up':'dn')}]];
+    document.getElementById('scKpis').innerHTML=rows.map(([nm,v,d])=>`<div class="kpi"><div class="l">${nm}</div><div class="v">${v}</div><div class="d ${d.c}">${d.t}</div></div>`).join('');
+    const tM=rangeEnd(win[win.length-1],12);
+    mkChart('scTrend',{type:'bar',data:{labels:tM.map(ymLabel),datasets:[
+      {type:'bar',label:'Clicks',data:tM.map(ym=>sumArr(src,[ym],0)),backgroundColor:col('c5'),borderRadius:3,yAxisID:'y'},
+      {type:'line',label:'Avg position',data:tM.map(ym=>{const a=src.data[ym];return a?a[2]:null;}),borderColor:col('gold-dk'),borderWidth:2,tension:.35,pointRadius:0,yAxisID:'y1'}
+    ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false}},y:{position:'left',grid:{color:'#f1efe9'},beginAtZero:true},y1:{position:'right',reverse:true,grid:{display:false}}}}});
+    document.getElementById('scNote').innerHTML=`Search Console · bbzlimo.com · ${winLab}. Position axis inverted — lower is better. Google limits history to ~16 months.`;})();
+  const otherSnap=(hasData(DATA.gbp)?`GBP (current vs comparison): Impressions ${fmt(sumArr(DATA.gbp,win,0))} vs ${fmt(sumArr(DATA.gbp,comp,0))}; Calls ${fmt(sumArr(DATA.gbp,win,1))}; Direction requests ${fmt(sumArr(DATA.gbp,win,3))}; Rating ${DATA.gbp.rating||'n/a'} (${DATA.gbp.reviews||0} reviews).`:'Google Business Profile data updating.')+'\n'+(hasData(DATA.callrail)?`CallRail: ${fmt(sumArr(DATA.callrail,win,0))} calls, ${fmt(sumArr(DATA.callrail,win,1))} answered this window.`:'Call tracking data updating.')+'\n'+(hasData(DATA.searchconsole)?`Search Console: ${fmt(sumArr(DATA.searchconsole,win,0))} clicks, ${fmt(sumArr(DATA.searchconsole,win,1))} impressions.`:'Search Console data updating.');
+  window.__SNAP=`Current view — ${tfLabel} (${winLab}) vs ${cmp==='year'?'Previous Year':'Previous Period'} (${compLab}). Metric focus: ${mName}. Filters: Channel=${chf}, Region=${regf}, City=${cityf}.\n`+
+    `KPIs (current vs comparison): `+METRICS.map(([nm,ix])=>`${nm} ${fmt(sumCh(win,ix,chf))} vs ${fmt(sumCh(comp,ix,chf))}`).join('; ')+`.\n`+
+    `${mName} by channel (current window): `+chBreak.map(x=>`${x[0]} ${fmt(x[1])}`).join(', ')+`.\n`+
+    `Top regions by sessions: `+regB.slice(0,7).map(x=>`${x[0]} ${fmt(x[1])}`).join(', ')+`.\n`+
+    `Top cities by sessions: `+cityB.slice(0,7).map(x=>`${x[0]} ${fmt(x[1])}`).join(', ')+`.\n`+
+    `Key events (current vs comparison): `+KE_LABELS.map((nm,ix)=>`${nm} ${fmt(sumKE(win,ix))} vs ${fmt(sumKE(comp,ix))}`).join('; ')+`.
+`+paidSnap+'\n'+otherSnap;
+}
+
+document.querySelectorAll('select').forEach(s=>s.addEventListener('change',render));
+(function(){const k=Object.keys(DATA.chm||{}).sort();const toI=ym=>ym.slice(0,4)+'-'+ym.slice(4);
+  const lo=k.length?k[0]:ymAdd(ANCHOR,-23),hi=ymAdd(ANCHOR,1);
+  const f=document.getElementById('f_from'),t=document.getElementById('f_to');
+  if(f&&t){f.min=t.min=toI(lo);f.max=t.max=toI(hi);
+    f.addEventListener('change',render);t.addEventListener('change',render);}})();
+render();
+
+document.getElementById('foot').innerHTML=`<b>Source:</b> Google Analytics 4 (property 309061594) via Windsor.ai, pulled live. Monthly grain, Jun 2024–Jun 2026. &nbsp; <b>Notes:</b> Bot/data-center traffic (Singapore, Lanzhou, Gansu, Ashburn, etc.) is filtered out. <b>request_a_quote</b> only recorded data in Jan–Feb 2026 and <b>lead_form</b> began Jan 2026 — earlier zeros reflect tracking not yet live, not a true decline. Minor channels under ~30 sessions/month are excluded, so monthly totals run ~1% below the platform figure. "This Month" (Jun 2026) is partial.`;
+</script>
+<script>
+/* After a cold start the page shows snapshot data; poll until live data is warm, then refresh once. */
+(function () {
+  if (typeof window.__STALE__ === 'undefined' || !window.__STALE__) return;
+  var bar = document.createElement('div');
+  bar.textContent = 'Loading live data\u2026';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#15110b;color:#d8b46a;'
+    + 'font:600 12.5px/2.6 \'Hanken Grotesk\',system-ui,sans-serif;text-align:center;letter-spacing:.06em;'
+    + 'border-bottom:1px solid rgba(216,180,106,.25)';
+  document.body.appendChild(bar);
+  var n = 0, iv = setInterval(function () {
+    n++;
+    fetch('/api/ready', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ready) { clearInterval(iv); bar.textContent = 'Live data ready \u2014 refreshing\u2026'; setTimeout(function(){ location.reload(); }, 400); }
+      })
+      .catch(function () {});
+    if (n > 48) { clearInterval(iv); bar.style.display = 'none'; } // stop after ~4 min
+  }, 5000);
+})();
+</script>
+</body>
+</html>
