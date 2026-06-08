@@ -73,6 +73,9 @@
   .anote-h{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dk);font-weight:700;margin-bottom:6px}
   .anote-b{font-size:12.5px;color:var(--ink);line-height:1.6}
   .anote-b[data-empty]{color:var(--muted)}
+  .anote-b[contenteditable]:hover,.exec-b[contenteditable]:hover{background:rgba(192,163,94,.06);cursor:text}
+  .anote-b[contenteditable]:focus,.exec-b[contenteditable]:focus{background:#fffdf8;box-shadow:inset 0 0 0 1px var(--gold-lt);border-radius:6px}
+  .edhint{font-size:9px;color:var(--muted);margin-left:8px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
   .qa{margin-top:4px}
   .qa-row{display:flex;gap:8px}
   .qa-in{flex:1;font-family:var(--sans);font-size:13px;padding:10px 13px;border:1px solid var(--line);border-radius:8px;color:var(--ink)}
@@ -468,29 +471,37 @@ document.querySelectorAll('select').forEach(s=>s.addEventListener('change',rende
     f.addEventListener('change',render);t.addEventListener('change',render);}})();
 render();
 
-// ---- AI marketing analysis (auto on load; refresh on demand) ----
+// ---- AI marketing analysis (auto on load; editable; saved in browser; regenerate on demand) ----
 const AN_IDS={ga4:'anGa4',gads:'anGads',meta:'anMeta',gbp:'anGbp',callrail:'anCr',searchconsole:'anSc'};
+const ALLK=['summary','ga4','gads','meta','gbp','callrail','searchconsole'];
+const LS='bbz_an_';
 let anBusy=false;
-function setNote(id,txt,empty){const e=document.querySelector('#'+id+' .anote-b');if(!e)return;e.textContent=txt;if(empty)e.setAttribute('data-empty','1');else e.removeAttribute('data-empty');}
-async function generateAnalysis(){
-  if(anBusy)return; anBusy=true;
+function lsGet(k){try{return localStorage.getItem(LS+k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(LS+k,v);}catch(e){}}
+function bodyEl(k){return k==='summary'?document.getElementById('execSum'):document.querySelector('#'+AN_IDS[k]+' .anote-b');}
+function makeEditable(k){const el=bodyEl(k);if(!el||el.dataset.ed)return;el.dataset.ed='1';el.setAttribute('contenteditable','true');el.setAttribute('spellcheck','false');el.title='Click to edit';el.addEventListener('input',()=>{el.removeAttribute('data-empty');lsSet(k,el.innerHTML);});}
+function setText(k,txt,empty){const el=bodyEl(k);if(!el)return;el.textContent=txt;if(empty)el.setAttribute('data-empty','1');else el.removeAttribute('data-empty');makeEditable(k);}
+function hints(){document.querySelectorAll('.anote-h').forEach(h=>{if(!h.querySelector('.edhint')){const s=document.createElement('span');s.className='edhint';s.textContent='✎ editable';h.appendChild(s);}});}
+function restoreSaved(){ALLK.forEach(k=>{const el=bodyEl(k),v=lsGet(k);if(el&&v!=null){el.innerHTML=v;el.removeAttribute('data-empty');}makeEditable(k);});}
+async function generateAnalysis(force){
+  if(anBusy)return;
+  if(!force && ALLK.some(k=>lsGet(k)!=null)){restoreSaved();hints();return;}  // keep your edits; no API call
+  anBusy=true;
   const btn=document.getElementById('anBtn'); if(btn){btn.disabled=true;btn.textContent='Analyzing…';}
-  Object.values(AN_IDS).forEach(id=>setNote(id,'Analyzing…',false));
-  const es=document.getElementById('execSum'); if(es){es.textContent='Analyzing…';es.removeAttribute('data-empty');}
+  ALLK.forEach(k=>setText(k,'Analyzing…',false));
   try{
     const r=await fetch('/api/analyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({context:window.__SNAP||''})});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error?JSON.stringify(j.error).slice(0,200):r.status);
-    for(const k in AN_IDS)setNote(AN_IDS[k], j[k]||'No notable change in this view.', false);
-    if(es)es.textContent=j.summary||'';
+    ALLK.forEach(k=>{const t=(k==='summary'?j.summary:j[k])||'No notable change in this view.';setText(k,t,false);lsSet(k,t);});
   }catch(e){
     const msg='Analysis runs on the live dashboard (needs the server connection).';
-    Object.values(AN_IDS).forEach(id=>setNote(id,msg,true));
-    if(es){es.textContent=msg;es.setAttribute('data-empty','1');}
-  }finally{anBusy=false; if(btn){btn.disabled=false;btn.textContent='Update analysis';}}
+    ALLK.forEach(k=>setText(k,msg,true));
+  }finally{anBusy=false; if(btn){btn.disabled=false;btn.textContent='Regenerate analysis';} hints();}
 }
-const anBtnEl=document.getElementById('anBtn'); if(anBtnEl)anBtnEl.onclick=generateAnalysis;
-generateAnalysis();
+const anBtnEl=document.getElementById('anBtn'); if(anBtnEl)anBtnEl.onclick=()=>{if(confirm('Regenerate all analysis from the live data? This replaces your edits for the current view.'))generateAnalysis(true);};
+generateAnalysis(false);
+
 
 // ---- single Ask box (free-form Q&A across the whole view) ----
 (function(){const box=document.querySelector('.qa');if(!box)return;const inp=box.querySelector('.qa-in'),ans=box.querySelector('.qa-ans');
