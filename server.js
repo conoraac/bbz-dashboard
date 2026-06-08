@@ -17,29 +17,34 @@ const GA4_ACCOUNT   = process.env.GA4_ACCOUNT  || '309061594';        // BBZ GA4
 const GADS_ACCOUNT  = process.env.GADS_ACCOUNT || '889-893-9290';     // BBZ Google Ads (NAC)
 const META_ACCOUNT  = process.env.META_ACCOUNT || '3111474999097042'; // BBZ Meta ad account
 const GBP_ACCOUNT   = process.env.GBP_ACCOUNT || 'locations/8839500927202128335'; // BBZ Business Profile
-const CALLRAIL_ACCOUNT = process.env.CALLRAIL_ACCOUNT || '648'; // BBZ's CallRail account in Windsor. NOTE: this id changes each time CallRail is reconnected in Windsor (was 645/647, now 648) — re-verify if calls stop appearing.
+const CALLRAIL_ACCOUNT = process.env.CALLRAIL_ACCOUNT || '842-760-809'; // BBZ's CallRail account in Windsor. NOTE: Windsor reassigns this every time CallRail is reconnected (was 645/648, now 842-760-809). If calls vanish, pull callrail account_id values and find the one with a "BBZ Contact Us Page" source.
 const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns per-call rows; pulling many months is slow, so default to the last 6. Raise if your call volume is low.
-const GSC_ACCOUNT   = process.env.GSC_ACCOUNT || 'sc-domain:bbzlimo.com'; // BBZ Search Console property
+const GSC_ACCOUNT   = process.env.GSC_ACCOUNT || 'bbzlimo.com'; // BBZ Search Console property as it appears in the account_id field (the sc-domain property; the url-prefix one is "https://www.bbzlimo.com/")
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'), 'utf8'));
 
 // ----------------------------------------------------------------------------
-// Windsor.ai REST pull.  NOTE: confirm the exact endpoint + params against your
-// Windsor dashboard (Onboarding > API). These mirror the connector calls that
-// already returned correct numbers (GA4 309061594, Google Ads 889-893-9290,
-// Meta 3111474999097042). If your account is keyed differently (e.g. account is
-// implied by the key, or the param is select_accounts), this is the ONLY
-// function to adjust.
+// Windsor.ai REST pull. IMPORTANT: Windsor's API returns EVERY connected account
+// by default (account selection in the UI does NOT scope the API). So we must
+// scope every pull to BBZ explicitly. We do it two ways for safety:
+//   1) server-side via the documented `filter` param: filter=[["account_id","eq",ID]]
+//   2) client-side: drop any row whose account field != BBZ's id
+// This guarantees another client's data can never bleed into BBZ's dashboard.
 // ----------------------------------------------------------------------------
-async function windsor(connector, account, fields, from, to, extra) {
-  let url = `https://connectors.windsor.ai/${connector}`
-    + `?api_key=${encodeURIComponent(WINDSOR_KEY)}`
-    + (account ? `&account_id=${encodeURIComponent(account)}` : '')
-    + `&date_from=${from}&date_to=${to}`
-    + `&fields=${fields.join(',')}&_renderer=json`;
-  if (extra) for (const [k, v] of Object.entries(extra)) url += `&${k}=${encodeURIComponent(v)}`;
+async function windsor(connector, account, fields, from, to, opts = {}) {
+  const acctField = opts.acctField || 'account_id';
+  const flds = (account && !fields.includes(acctField)) ? [acctField, ...fields] : fields;
+  const params = new URLSearchParams();
+  params.set('api_key', WINDSOR_KEY);
+  params.set('date_from', from);
+  params.set('date_to', to);
+  params.set('fields', flds.join(','));
+  params.set('_renderer', 'json');
+  if (account) params.set('filter', JSON.stringify([[acctField, 'eq', account]]));
+  if (opts.date_filters) params.set('date_filters', JSON.stringify(opts.date_filters));
+  const url = `https://connectors.windsor.ai/${connector}?` + params.toString();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 30000); // never let one source hang the refresh
   let r;
@@ -47,7 +52,9 @@ async function windsor(connector, account, fields, from, to, extra) {
   finally { clearTimeout(timer); }
   if (!r.ok) throw new Error(connector + ' ' + r.status + ': ' + (await r.text()).slice(0, 200));
   const j = await r.json();
-  return j.data || j;
+  let rows = j.data || j;
+  if (Array.isArray(rows) && account) rows = rows.filter(x => String(x[acctField]) === String(account));
+  return rows;
 }
 
 const FROM = '2024-06-01';
@@ -150,7 +157,7 @@ async function buildCallRail() {
   try {
     rows = await windsor('callrail', CALLRAIL_ACCOUNT,
       ['year_month','calls__id','calls__answered','calls__first_call','calls__source'],
-      from, TO(), { date_filters: JSON.stringify({ calls: 'calls__start_time' }) });
+      from, TO(), { date_filters: { calls: 'calls__start_time' } });
   } catch { return { months: [], data: {}, empty: true }; }
   if (!Array.isArray(rows) || !rows.length) return { months: [], data: {}, empty: true };
   const data = {}, sources = {}, months = new Set();
