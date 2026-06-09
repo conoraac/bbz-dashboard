@@ -17,7 +17,8 @@ const GA4_ACCOUNT   = process.env.GA4_ACCOUNT  || '309061594';        // BBZ GA4
 const GADS_ACCOUNT  = process.env.GADS_ACCOUNT || '889-893-9290';     // BBZ Google Ads (NAC)
 const META_ACCOUNT  = process.env.META_ACCOUNT || '3111474999097042'; // BBZ Meta ad account
 const GBP_ACCOUNT   = process.env.GBP_ACCOUNT || 'locations/8839500927202128335'; // BBZ Business Profile
-const CALLRAIL_ACCOUNT = process.env.CALLRAIL_ACCOUNT || '842-760-809'; // BBZ's CallRail account in Windsor. NOTE: Windsor reassigns this every time CallRail is reconnected (was 645/648, now 842-760-809). If calls vanish, pull callrail account_id values and find the one with a "BBZ Contact Us Page" source.
+const CALLRAIL_ACCOUNT = process.env.CALLRAIL_ACCOUNT || '842-760-809'; // BBZ's CallRail account (informational; the reliable scope is the company id below, since account ids change on reconnect)
+const CALLRAIL_COMPANY = process.env.CALLRAIL_COMPANY || 'COM2377c78f5f0249d4abbb51a2888b5f52'; // BBZ's CallRail company id — this is what actually filters calls. If calls vanish, pull callrail calls__company_id + calls__source and find the company whose calls include "BBZ Contact Us Page".
 const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns per-call rows; pulling many months is slow, so default to the last 6. Raise if your call volume is low.
 const GSC_ACCOUNT   = process.env.GSC_ACCOUNT || 'bbzlimo.com'; // BBZ Search Console property as it appears in the account_id field (the sc-domain property; the url-prefix one is "https://www.bbzlimo.com/")
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
@@ -35,6 +36,7 @@ const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'
 // ----------------------------------------------------------------------------
 async function windsor(connector, account, fields, from, to, opts = {}) {
   const acctField = opts.acctField || 'account_id';
+  const useServerFilter = opts.serverFilter !== false;   // some connectors (Search Console) ignore the filter and return nothing; those filter in code only
   const flds = (account && !fields.includes(acctField)) ? [acctField, ...fields] : fields;
   const params = new URLSearchParams();
   params.set('api_key', WINDSOR_KEY);
@@ -42,7 +44,7 @@ async function windsor(connector, account, fields, from, to, opts = {}) {
   params.set('date_to', to);
   params.set('fields', flds.join(','));
   params.set('_renderer', 'json');
-  if (account) params.set('filter', JSON.stringify([[acctField, 'eq', account]]));
+  if (account && useServerFilter) params.set('filter', JSON.stringify([[acctField, 'eq', account]]));
   if (opts.date_filters) params.set('date_filters', JSON.stringify(opts.date_filters));
   const url = `https://connectors.windsor.ai/${connector}?` + params.toString();
   const ctrl = new AbortController();
@@ -119,12 +121,70 @@ function buildPaid(rows, valFields) {
   }
   return { months: [...months].sort(), campaigns: camps, data };
 }
-const buildGads = async () => buildPaid(
-  await windsor('google_ads', GADS_ACCOUNT, ['year_month','campaign','clicks','impressions','cost','conversions'], FROM, TO()),
-  ['clicks','impressions','cost','conversions']);
-const buildMeta = async () => buildPaid(
-  await windsor('facebook', META_ACCOUNT, ['year_month','campaign','clicks','impressions','spend','actions_lead','reach'], FROM, TO()),
-  ['clicks','impressions','spend','actions_lead','reach']);
+// trailing-N-months start date (1st of the month N-1 months ago)
+function trailingFrom(n) { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (n - 1)); return d.toISOString().slice(0, 10); }
+
+// Google Ads drill-down: campaign > ad group > keyword, per month. detail[ym][campaign][adGroup][keyword] = [clicks,impr,cost,conv].
+// Pulled for the trailing 13 months so the keyword grain stays well under Windsor's response cap.
+async function buildGadsDetail() {
+  let rows;
+  try {
+    rows = await windsor('google_ads', GADS_ACCOUNT,
+      ['year_month','campaign','ad_group_name','keyword_text','clicks','impressions','cost','conversions'],
+      trailingFrom(13), TO());
+  } catch { return {}; }
+  if (!Array.isArray(rows)) return {};
+  const out = {};
+  for (const r of rows) {
+    const ym = normYM(r.year_month), c = r.campaign; if (!ym || !c) continue;
+    const g = r.ad_group_name || '(no ad group)', k = r.keyword_text || '(no keyword)';
+    const M = out[ym] || (out[ym] = {});
+    const C = M[c] || (M[c] = {});
+    const G = C[g] || (C[g] = {});
+    const v = G[k] || (G[k] = [0,0,0,0]);
+    v[0]+=+r.clicks||0; v[1]+=+r.impressions||0; v[2]+=+r.cost||0; v[3]+=+r.conversions||0;
+  }
+  return out;
+}
+
+// Meta drill-down: campaign > ad set > ad (with creative thumbnail), per month.
+// detail[ym][campaign][adSet][ad] = [spend,leads,clicks,impr,thumbnailUrl].
+async function buildMetaDetail() {
+  let rows;
+  try {
+    rows = await windsor('facebook', META_ACCOUNT,
+      ['year_month','campaign','adset_name','ad_name','thumbnail_url','spend','actions_lead','clicks','impressions'],
+      trailingFrom(13), TO());
+  } catch { return {}; }
+  if (!Array.isArray(rows)) return {};
+  const out = {};
+  for (const r of rows) {
+    const ym = normYM(r.year_month), c = r.campaign; if (!ym || !c) continue;
+    const s = r.adset_name || '(no ad set)', a = r.ad_name || '(no ad)';
+    const M = out[ym] || (out[ym] = {});
+    const C = M[c] || (M[c] = {});
+    const S = C[s] || (C[s] = {});
+    const v = S[a] || (S[a] = [0,0,0,0,'']);
+    v[0]+=+r.spend||0; v[1]+=+r.actions_lead||0; v[2]+=+r.clicks||0; v[3]+=+r.impressions||0;
+    if (r.thumbnail_url) v[4] = r.thumbnail_url;
+  }
+  return out;
+}
+
+async function buildGads() {
+  const base = buildPaid(
+    await windsor('google_ads', GADS_ACCOUNT, ['year_month','campaign','clicks','impressions','cost','conversions'], FROM, TO()),
+    ['clicks','impressions','cost','conversions']);
+  base.detail = await buildGadsDetail();
+  return base;
+}
+async function buildMeta() {
+  const base = buildPaid(
+    await windsor('facebook', META_ACCOUNT, ['year_month','campaign','clicks','impressions','spend','actions_lead','reach'], FROM, TO()),
+    ['clicks','impressions','spend','actions_lead','reach']);
+  base.detail = await buildMetaDetail();
+  return base;
+}
 
 // Google Business Profile — daily rows aggregated to monthly [impressions, calls, website, directions]
 async function buildGBP() {
@@ -150,14 +210,14 @@ async function buildGBP() {
 // Needs date_filters on the calls table, and a per-call id to count (the connector otherwise
 // returns distinct field combinations, not one row per call). Booleans come back as "True"/"False".
 async function buildCallRail() {
-  if (!CALLRAIL_ACCOUNT) return { months: [], data: {}, empty: true };
+  if (!CALLRAIL_COMPANY) return { months: [], data: {}, empty: true };
   const d = new Date(); d.setMonth(d.getMonth() - (CALLRAIL_MONTHS - 1)); d.setDate(1);
   const from = d.toISOString().slice(0, 10);
   let rows;
   try {
-    rows = await windsor('callrail', CALLRAIL_ACCOUNT,
+    rows = await windsor('callrail', CALLRAIL_COMPANY,
       ['year_month','calls__id','calls__answered','calls__first_call','calls__source'],
-      from, TO(), { date_filters: { calls: 'calls__start_time' } });
+      from, TO(), { acctField: 'calls__company_id', date_filters: { calls: 'calls__start_time' } });
   } catch { return { months: [], data: {}, empty: true }; }
   if (!Array.isArray(rows) || !rows.length) return { months: [], data: {}, empty: true };
   const data = {}, sources = {}, months = new Set();
@@ -178,14 +238,46 @@ async function buildCallRail() {
 async function buildGSC() {
   const d = new Date(); d.setMonth(d.getMonth() - 15);
   const from = d.toISOString().slice(0, 10);
-  const rows = await windsor('searchconsole', GSC_ACCOUNT, ['year_month','clicks','impressions','position'], from, TO());
+  const rows = await windsor('searchconsole', GSC_ACCOUNT, ['year_month','clicks','impressions','position'], from, TO(), { serverFilter: false });
   const data = {}, months = new Set();
   for (const r of rows) {
     const ym = normYM(r.year_month); if (!ym) continue;
     months.add(ym);
     data[ym] = [+r.clicks || 0, +r.impressions || 0, +r.position || 0];
   }
-  return { months: [...months].sort(), data };
+  const out = { months: [...months].sort(), data };
+  out.queries = await buildGSCQueries();
+  return out;
+}
+
+// Search Console query-level, per month. queries[ym][queryText] = [clicks, impressions, position].
+// account_id is NOT filterable server-side for Search Console, so we pull one month at a time (each
+// month's all-property response is small) and code-filter to bbzlimo.com inside windsor(). 12 months in parallel.
+async function buildGSCQueries() {
+  const N = 12, now = new Date(), reqs = [];
+  for (let i = 0; i < N; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const from = d.toISOString().slice(0, 10);
+    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const ym = ('' + d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0');
+    reqs.push(
+      windsor('searchconsole', GSC_ACCOUNT, ['account_id','query','clicks','impressions','position'], from, end, { serverFilter: false })
+        .then(rows => ({ ym, rows })).catch(() => ({ ym, rows: [] }))
+    );
+  }
+  const res = await Promise.all(reqs);
+  const out = {};
+  for (const { ym, rows } of res) {
+    if (!Array.isArray(rows) || !rows.length) continue;
+    const Q = {};
+    for (const r of rows) {
+      const q = r.query; if (!q) continue;
+      const v = Q[q] || (Q[q] = [0, 0, 0]);
+      v[0] += +r.clicks || 0; v[1] += +r.impressions || 0; v[2] = +r.position || v[2];
+    }
+    out[ym] = Q;
+  }
+  return out;
 }
 
 let cache = { t: 0, data: null };
