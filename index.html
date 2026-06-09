@@ -244,7 +244,7 @@
   <div class="sechead"><div class="secnum">5</div><div><div class="tt">Phone Calls</div><div class="ss">Call Tracking · CallRail</div></div></div>
   <div class="note" id="crNote"></div>
   <div class="grid g3" id="crKpis" style="margin-bottom:14px"></div>
-  <div class="card"><h3>Call volume by day <span id="crDayWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
+  <div class="card"><h3>Call volume by weekday <span id="crDayWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
   <div class="card" style="margin-top:14px"><h3>Call log <span id="crLogWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><table id="crLog"></table><div class="pager" id="crLogPager"></div></div>
 
   <div class="anote" id="anCr"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
@@ -282,7 +282,7 @@
 
 <script>
 /*__DATA__*/
-try{var __B='build 21';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
+try{var __B='build 22';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
 const C=getComputedStyle(document.documentElement),col=n=>C.getPropertyValue('--'+n).trim();
 const PAL=['c1','c2','c3','c4','c5','c6','c7','c8','c9'].map(col);
 const HASCHART=typeof Chart!=='undefined';
@@ -573,18 +573,19 @@ function render(){
     if(end>today)end.setTime(today.getTime());
     const days=[];for(let dt=new Date(start);dt<=end;dt.setDate(dt.getDate()+1))days.push(dt.toISOString().slice(0,10));
     const dayLabel=d=>{const p=d.split('-');return MON[+p[1]-1]+' '+(+p[2]);};
-    const useDaily=src.daily&&days.length<=120;
-    const dayWin=document.getElementById('crDayWin');
-    if(useDaily){
-      if(dayWin)dayWin.textContent='— '+winLab+', by day';
-      const aD=days.map(d=>{const a=src.daily[d];return a?a[1]:0;});
-      const mD=days.map(d=>{const a=src.daily[d];return a?Math.max(0,a[0]-a[1]):0;});
-      mkChart('crTrend',{type:'bar',data:{labels:days.map(dayLabel),datasets:[
-        {label:'Answered',data:aD,backgroundColor:col('c1'),borderRadius:2,stack:'s'},
-        {label:'Missed',data:mD,backgroundColor:'#d9d2c4',borderRadius:2,stack:'s'}
-      ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false},stacked:true,ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:16}},y:{grid:{color:'#f1efe9'},stacked:true,beginAtZero:true}}}});
+    const dow=document.getElementById('crDayWin');
+    if(src.daily){
+      if(dow)dow.textContent='— '+winLab+', totals by weekday';
+      const order=[1,2,3,4,5,6,0], lab=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const ans=[0,0,0,0,0,0,0], mis=[0,0,0,0,0,0,0];
+      days.forEach(d=>{const a=src.daily[d];if(!a)return;const wd=new Date(d+'T00:00:00').getDay();ans[wd]+=a[1]||0;mis[wd]+=Math.max(0,(a[0]||0)-(a[1]||0));});
+      const aD=order.map(i=>ans[i]), mD=order.map(i=>mis[i]);
+      mkChart('crTrend',{type:'bar',data:{labels:lab,datasets:[
+        {label:'Answered',data:aD,backgroundColor:col('c1'),borderRadius:3,stack:'s'},
+        {label:'Missed',data:mD,backgroundColor:'#d9d2c4',borderRadius:3,stack:'s'}
+      ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false},stacked:true,ticks:{maxRotation:0}},y:{grid:{color:'#f1efe9'},stacked:true,beginAtZero:true}}}});
     }else{
-      if(dayWin)dayWin.textContent='— trailing 12 months (window too long for daily)';
+      if(dow)dow.textContent='— trailing 12 months';
       const tM=rangeEnd(l,12);
       mkChart('crTrend',{type:'bar',data:{labels:tM.map(ymLabel),datasets:[{label:'Calls',data:tM.map(ym=>sumArr(src,[ym],0)),backgroundColor:col('c1'),borderRadius:3}]},options:{plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f1efe9'},beginAtZero:true}}}});
     }
@@ -621,7 +622,7 @@ function render(){
       }
       drawPage();
     }
-    document.getElementById('crNote').textContent=`CallRail \u00b7 BBZ \u00b7 ${winLab}. Answered vs missed shown by day; log lists recent individual calls.`;})();
+    document.getElementById('crNote').textContent=`CallRail \u00b7 BBZ \u00b7 ${winLab}. Answered vs missed totaled by weekday; log lists recent individual calls.`;})();
   // ---- Search Console ----
   (function(){const src=DATA.searchconsole;
     if(!hasData(src)){phState('scNote','scKpis','Search Console data updates automatically and will appear here shortly.');if(charts.scTrend)charts.scTrend.destroy();return;}
