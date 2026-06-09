@@ -269,8 +269,15 @@
 /*__DATA__*/
 const C=getComputedStyle(document.documentElement),col=n=>C.getPropertyValue('--'+n).trim();
 const PAL=['c1','c2','c3','c4','c5','c6','c7','c8','c9'].map(col);
-Chart.defaults.font.family="'Hanken Grotesk',Arial,sans-serif";Chart.defaults.font.size=10;Chart.defaults.color='#9a9ea6';
-Chart.defaults.plugins.legend.display=false;Chart.defaults.maintainAspectRatio=false;Chart.defaults.animation={duration:300};
+const HASCHART=typeof Chart!=='undefined';
+if(HASCHART){
+  Chart.defaults.font.family="'Hanken Grotesk',Arial,sans-serif";Chart.defaults.font.size=10;Chart.defaults.color='#9a9ea6';
+  Chart.defaults.plugins.legend.display=false;Chart.defaults.maintainAspectRatio=false;Chart.defaults.animation={duration:300};
+}else{
+  try{var cw=document.createElement('div');cw.style.cssText='background:#fff8e6;border:1px solid #f0e2b8;color:#7a6320;padding:10px 14px;border-radius:8px;margin:0 0 16px;font-size:13px;line-height:1.5';
+  cw.textContent='Graphs need an internet connection to draw and are hidden here. Every number, table, and drill-down below is complete. To see the graphs too, open this file in a web browser, or use the live dashboard link.';
+  var host=document.querySelector('.wrap')||document.body;host.insertBefore(cw,host.firstChild);}catch(e){}
+}
 
 const METRICS=[['Sessions',0],['Total Users',1],['Views',2],['Event Count',3],['Key Events',4]];
 const KE_LABELS=['Inbound Call','Lead Form','LiveryCoach Booked','Request a Quote'];
@@ -386,7 +393,7 @@ function scqTrendShow(q){if(!SCQ)return;const wrap=document.getElementById('scQT
   wrap.scrollIntoView({behavior:'smooth',block:'nearest'});}
 
 let charts={};
-function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
+function mkChart(id,cfg){if(!HASCHART)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
 
 function render(){
   const tf=document.getElementById('f_tf').value, cmp=document.getElementById('f_cmp').value,
@@ -602,7 +609,7 @@ generateAnalysis(false);
 
 // ---- single Ask box (free-form Q&A across the whole view) ----
 (function(){const box=document.querySelector('.qa');if(!box)return;const inp=box.querySelector('.qa-in'),ans=box.querySelector('.qa-ans');
-  box.querySelector('.qa-btn').onclick=()=>askView(inp,ans);
+  const qb=box.querySelector('.qa-btn');if(qb)qb.onclick=()=>askView(inp,ans);
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')askView(inp,ans);});})();
 async function askView(inp,ans){const q=inp.value.trim();if(!q)return;ans.textContent='Thinking…';
   try{const r=await fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:q,context:window.__SNAP})});const j=await r.json();
