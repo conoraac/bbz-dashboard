@@ -216,21 +216,49 @@ async function buildCallRail() {
   let rows;
   try {
     rows = await windsor('callrail', CALLRAIL_COMPANY,
-      ['year_month','calls__id','calls__answered','calls__first_call','calls__source'],
+      ['year_month','date','calls__id','calls__answered','calls__first_call','calls__source'],
       from, TO(), { acctField: 'calls__company_id', date_filters: { calls: 'calls__start_time' } });
   } catch { return { months: [], data: {}, empty: true }; }
   if (!Array.isArray(rows) || !rows.length) return { months: [], data: {}, empty: true };
-  const data = {}, sources = {}, months = new Set();
+  const isTrue = v => v === 'True' || v === true;
+  const data = {}, sources = {}, daily = {}, months = new Set();
   for (const r of rows) {
     const ym = normYM(r.year_month); if (!ym) continue; months.add(ym);
+    const ans = isTrue(r.calls__answered), fst = isTrue(r.calls__first_call);
     const cur = (data[ym] = data[ym] || [0,0,0]);
-    cur[0] += 1;                                              // total calls
-    if (r.calls__answered === 'True' || r.calls__answered === true) cur[1] += 1;
-    if (r.calls__first_call === 'True' || r.calls__first_call === true) cur[2] += 1;
+    cur[0] += 1; if (ans) cur[1] += 1; if (fst) cur[2] += 1;
+    const day = (r.date || '').slice(0, 10);
+    if (day) { const dd = (daily[day] = daily[day] || [0,0,0]); dd[0] += 1; if (ans) dd[1] += 1; if (fst) dd[2] += 1; }
     const s = r.calls__source || 'Unknown';
     (sources[ym] = sources[ym] || {})[s] = (sources[ym][s] || 0) + 1;
   }
-  return { months: [...months].sort(), data, sources };
+  const out = { months: [...months].sort(), data, sources, daily };
+  out.log = await buildCallRailLog();
+  return out;
+}
+
+// Recent call log (trailing 30 days) with per-call detail. Kept short so the response stays well under cap.
+async function buildCallRailLog() {
+  const d = new Date(); d.setDate(d.getDate() - 30);
+  const from = d.toISOString().slice(0, 10);
+  let rows;
+  try {
+    rows = await windsor('callrail', CALLRAIL_COMPANY,
+      ['calls__start_time','calls__source','calls__duration','calls__answered','calls__first_call','calls__customer_city','calls__customer_state','calls__direction'],
+      from, TO(), { acctField: 'calls__company_id', date_filters: { calls: 'calls__start_time' } });
+  } catch { return []; }
+  if (!Array.isArray(rows)) return [];
+  const isTrue = v => v === 'True' || v === true;
+  const log = rows.map(r => ({
+    t: r.calls__start_time || '',
+    s: r.calls__source || 'Unknown',
+    d: +r.calls__duration || 0,
+    a: isTrue(r.calls__answered),
+    f: isTrue(r.calls__first_call),
+    c: [r.calls__customer_city, r.calls__customer_state].filter(Boolean).join(', '),
+    dir: r.calls__direction || ''
+  })).filter(x => x.t).sort((a, b) => (a.t < b.t ? 1 : -1));
+  return log.slice(0, 300);
 }
 
 // Search Console — Windsor `searchconsole` connector. Monthly [clicks, impressions, avg position].
@@ -238,44 +266,52 @@ async function buildCallRail() {
 async function buildGSC() {
   const d = new Date(); d.setMonth(d.getMonth() - 15);
   const from = d.toISOString().slice(0, 10);
-  const rows = await windsor('searchconsole', GSC_ACCOUNT, ['year_month','clicks','impressions','position'], from, TO(), { serverFilter: false });
   const data = {}, months = new Set();
-  for (const r of rows) {
-    const ym = normYM(r.year_month); if (!ym) continue;
-    months.add(ym);
-    data[ym] = [+r.clicks || 0, +r.impressions || 0, +r.position || 0];
-  }
+  try {
+    const rows = await windsor('searchconsole', GSC_ACCOUNT, ['year_month','clicks','impressions','position'], from, TO(), { serverFilter: false });
+    if (Array.isArray(rows)) for (const r of rows) {
+      const ym = normYM(r.year_month); if (!ym) continue;
+      months.add(ym);
+      data[ym] = [+r.clicks || 0, +r.impressions || 0, +r.position || 0];
+    }
+  } catch (e) { console.error('GSC totals:', e.message); }
   const out = { months: [...months].sort(), data };
-  out.queries = await buildGSCQueries();
+  try { out.queries = await buildGSCQueries(); } catch (e) { console.error('GSC queries:', e.message); out.queries = {}; }
+  if (!out.months.length && !Object.keys(out.queries).length) out.empty = true;
   return out;
 }
 
 // Search Console query-level, per month. queries[ym][queryText] = [clicks, impressions, position].
 // account_id is NOT filterable server-side for Search Console, so we pull one month at a time (each
-// month's all-property response is small) and code-filter to bbzlimo.com inside windsor(). 12 months in parallel.
+// month's all-property response is small) and code-filter to bbzlimo.com inside windsor(). Pulled in
+// small batches so we don't trip Windsor's concurrency/rate limits (which would empty the whole section).
 async function buildGSCQueries() {
-  const N = 12, now = new Date(), reqs = [];
+  const N = 12, BATCH = 4, now = new Date(), out = {};
+  const specs = [];
   for (let i = 0; i < N; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const from = d.toISOString().slice(0, 10);
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
-    const ym = ('' + d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0');
-    reqs.push(
-      windsor('searchconsole', GSC_ACCOUNT, ['account_id','query','clicks','impressions','position'], from, end, { serverFilter: false })
-        .then(rows => ({ ym, rows })).catch(() => ({ ym, rows: [] }))
-    );
+    specs.push({
+      from: d.toISOString().slice(0, 10),
+      end: new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10),
+      ym: ('' + d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0'),
+    });
   }
-  const res = await Promise.all(reqs);
-  const out = {};
-  for (const { ym, rows } of res) {
-    if (!Array.isArray(rows) || !rows.length) continue;
-    const Q = {};
-    for (const r of rows) {
-      const q = r.query; if (!q) continue;
-      const v = Q[q] || (Q[q] = [0, 0, 0]);
-      v[0] += +r.clicks || 0; v[1] += +r.impressions || 0; v[2] = +r.position || v[2];
+  for (let i = 0; i < specs.length; i += BATCH) {
+    const slice = specs.slice(i, i + BATCH);
+    const res = await Promise.all(slice.map(s =>
+      windsor('searchconsole', GSC_ACCOUNT, ['account_id','query','clicks','impressions','position'], s.from, s.end, { serverFilter: false })
+        .then(rows => ({ ym: s.ym, rows })).catch(() => ({ ym: s.ym, rows: [] }))
+    ));
+    for (const { ym, rows } of res) {
+      if (!Array.isArray(rows) || !rows.length) continue;
+      const Q = {};
+      for (const r of rows) {
+        const q = r.query; if (!q) continue;
+        const v = Q[q] || (Q[q] = [0, 0, 0]);
+        v[0] += +r.clicks || 0; v[1] += +r.impressions || 0; v[2] = +r.position || v[2];
+      }
+      out[ym] = Q;
     }
-    out[ym] = Q;
   }
   return out;
 }
@@ -364,14 +400,17 @@ app.post('/api/analyze', async (req, res) => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1000, messages: [{ role: 'user', content:
+      body: JSON.stringify({ model: MODEL, max_tokens: 1500, messages: [{ role: 'user', content:
         `You are a senior marketing analyst at Astoria Advertising Company reviewing BBZ Limousine's live performance `
         + `data for the current reporting window. Using ONLY the data below, write a brief marketing read for each `
         + `channel: what the numbers indicate and the single most useful next action. Be specific with figures, plain `
         + `spoken, no jargon, no markdown, 2 to 3 sentences each. Do not use em dashes.\n\n${context}\n\n`
-        + `Respond with ONLY a JSON object (no preamble, no code fences) with exactly these string keys: `
-        + `"ga4", "gads", "meta", "gbp", "callrail", "searchconsole", "summary". "summary" is a 2 to 3 sentence `
-        + `executive takeaway across all channels. If a channel shows no data, give a one sentence note that it is not yet reporting.` }] })
+        + `Respond with ONLY a JSON object (no preamble, no code fences) with exactly these keys: `
+        + `"ga4", "gads", "meta", "gbp", "callrail", "searchconsole" (each a 2 to 3 sentence string), `
+        + `"summary" (a 2 to 3 sentence executive takeaway string across all channels), and `
+        + `"actions" (an array of 4 to 6 short, specific, prioritized action item strings drawn from across all `
+        + `channels, each starting with a verb and referencing concrete figures or names where useful, most important first). `
+        + `If a channel shows no data, give a one sentence note that it is not yet reporting.` }] })
     });
     const j = await r.json();
     if (!r.ok) return res.status(r.status).json({ error: j });

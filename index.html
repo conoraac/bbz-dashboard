@@ -133,8 +133,8 @@
 <body>
 <header>
   <div class="hd">
-    <div class="bbzmark"><div class="est">EST. 1869</div><div class="w">BBZ</div><div class="rule"></div><div class="sub">LIMOUSINE &amp; LIVERY SERVICE</div></div>
-    <div class="r"><div class="t">Performance Dashboard</div><div class="s">Live · Google Analytics 4</div><div class="aac">Astoria Advertising Company</div></div>
+    <div class="bbzmark"><div class="w">BBZ</div><div class="rule"></div><div class="sub">LIMOUSINE &amp; LIVERY SERVICE</div></div>
+    <div class="r"><div class="t">Performance Dashboard</div><div class="aac">Astoria Advertising Company</div></div>
   </div>
 </header>
 
@@ -170,7 +170,7 @@
 
 <div class="wrap">
   <div class="exec">
-    <div class="exec-h"><span>Executive Summary</span><button class="exec-btn" id="anBtn">Update analysis</button></div>
+    <div class="exec-h"><span>Executive Summary</span></div>
     <div class="exec-b" id="execSum" data-empty="1">A marketing summary of this view appears here on the live dashboard.</div>
   </div>
   <section class="block">
@@ -235,7 +235,8 @@
   <div class="sechead"><div class="secnum">5</div><div><div class="tt">Phone Calls</div><div class="ss">Call Tracking · CallRail</div></div></div>
   <div class="note" id="crNote"></div>
   <div class="grid g4" id="crKpis" style="margin-bottom:14px"></div>
-  <div class="card"><h3>Call volume — trailing 12 months</h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
+  <div class="card"><h3>Call volume by day <span id="crDayWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
+  <div class="card" style="margin-top:14px"><h3>Call log <span id="crLogWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><table id="crLog"></table></div>
 
   <div class="anote" id="anCr"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
   </section>
@@ -262,11 +263,17 @@
   </div>
   </section>
 
+  <div class="exec" style="margin-top:4px">
+    <div class="exec-h"><span>Action Items</span><span style="font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">Prioritized next steps · ✎ editable</span></div>
+    <div class="exec-b" id="actionList" data-empty="1">Prioritized action items across all channels appear here when analysis runs on the live dashboard.</div>
+  </div>
+
   <footer id="foot"></footer>
 </div>
 
 <script>
 /*__DATA__*/
+try{var __B='build 13';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
 const C=getComputedStyle(document.documentElement),col=n=>C.getPropertyValue('--'+n).trim();
 const PAL=['c1','c2','c3','c4','c5','c6','c7','c8','c9'].map(col);
 const HASCHART=typeof Chart!=='undefined';
@@ -520,14 +527,48 @@ function render(){
     document.getElementById('gbpNote').innerHTML=`Google Business Profile \u00b7 BBZ Limo Service NJ \u00b7 ${winLab}. &nbsp;\u2605 ${src.rating?src.rating.toFixed(1):'\u2014'} rating \u00b7 ${fmt(src.reviews||0)} reviews.`;})();
   // ---- CallRail ----
   (function(){const src=DATA.callrail;
-    if(!hasData(src)){phState('crNote','crKpis','Call tracking data updates automatically and will appear here shortly.');if(charts.crTrend)charts.crTrend.destroy();return;}
+    if(!hasData(src)){phState('crNote','crKpis','Call tracking data updates automatically and will appear here shortly.');if(charts.crTrend)charts.crTrend.destroy();const el0=document.getElementById('crLog');if(el0)el0.innerHTML='';return;}
     const tot=sumArr(src,win,0),ans=sumArr(src,win,1),fst=sumArr(src,win,2),ptot=sumArr(src,comp,0),pans=sumArr(src,comp,1);
     const rate=tot?Math.round(ans/tot*100):0,prate=ptot?Math.round(pans/ptot*100):0;
     const rows=[['Total Calls',fmt(tot),delta(tot,ptot)],['Answered',fmt(ans),delta(ans,pans)],['Answer Rate',rate+'%',delta(rate,prate)],['First-Time',fmt(fst),delta(fst,sumArr(src,comp,2))]];
     document.getElementById('crKpis').innerHTML=rows.map(([nm,v,d])=>`<div class="kpi"><div class="l">${nm}</div><div class="v">${v}</div><div class="d ${d.c}">${d.t}</div></div>`).join('');
-    const tM=rangeEnd(win[win.length-1],12);
-    mkChart('crTrend',{type:'bar',data:{labels:tM.map(ymLabel),datasets:[{label:'Calls',data:tM.map(ym=>sumArr(src,[ym],0)),backgroundColor:col('c1'),borderRadius:3}]},options:{plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f1efe9'},beginAtZero:true}}}});
-    document.getElementById('crNote').textContent=`CallRail \u00b7 BBZ \u00b7 ${winLab}.`;})();
+    // ---- day enumeration for the selected window (clamped to today) ----
+    const f=win[0],l=win[win.length-1];
+    const start=new Date(+f.slice(0,4),+f.slice(4)-1,1), end=new Date(+l.slice(0,4),+l.slice(4),0), today=new Date();
+    if(end>today)end.setTime(today.getTime());
+    const days=[];for(let dt=new Date(start);dt<=end;dt.setDate(dt.getDate()+1))days.push(dt.toISOString().slice(0,10));
+    const dayLabel=d=>{const p=d.split('-');return MON[+p[1]-1]+' '+(+p[2]);};
+    const useDaily=src.daily&&days.length<=120;
+    const dayWin=document.getElementById('crDayWin');
+    if(useDaily){
+      if(dayWin)dayWin.textContent='— '+winLab+', by day';
+      const aD=days.map(d=>{const a=src.daily[d];return a?a[1]:0;});
+      const mD=days.map(d=>{const a=src.daily[d];return a?Math.max(0,a[0]-a[1]):0;});
+      mkChart('crTrend',{type:'bar',data:{labels:days.map(dayLabel),datasets:[
+        {label:'Answered',data:aD,backgroundColor:col('c1'),borderRadius:2,stack:'s'},
+        {label:'Missed',data:mD,backgroundColor:'#d9d2c4',borderRadius:2,stack:'s'}
+      ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false},stacked:true,ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:16}},y:{grid:{color:'#f1efe9'},stacked:true,beginAtZero:true}}}});
+    }else{
+      if(dayWin)dayWin.textContent='— trailing 12 months (window too long for daily)';
+      const tM=rangeEnd(l,12);
+      mkChart('crTrend',{type:'bar',data:{labels:tM.map(ymLabel),datasets:[{label:'Calls',data:tM.map(ym=>sumArr(src,[ym],0)),backgroundColor:col('c1'),borderRadius:3}]},options:{plugins:{tooltip:{enabled:true}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f1efe9'},beginAtZero:true}}}});
+    }
+    // ---- call log ----
+    const lg=document.getElementById('crLog');
+    if(lg){
+      const winStart=days[0]||f.slice(0,4)+'-'+f.slice(4)+'-01', winEnd=days[days.length-1]||winStart;
+      const fmtDur=s=>{s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+      const badge='display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;background:var(--gold);color:#1a1208;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle';
+      const logRow=c=>{const dt=new Date(c.t);const when=isNaN(dt)?esc(c.t):`${MON[dt.getMonth()]} ${dt.getDate()}, ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        const status=c.a?'<span class="up">Answered</span>':'<span class="dn">Missed</span>';
+        return `<tr><td class="tname">${when}${c.f?`<span style="${badge}">NEW</span>`:''}</td><td class="tname">${esc(c.s)}</td><td class="tname">${esc(c.c||'—')}</td><td>${c.a?fmtDur(c.d):'—'}</td><td>${status}</td></tr>`;};
+      let L=(src.log||[]).filter(c=>{const d=(c.t||'').slice(0,10);return d>=winStart&&d<=winEnd;}),basis='— '+winLab;
+      if(!L.length){L=(src.log||[]).slice(0,60);basis='— most recent (last 30 days)';}else L=L.slice(0,150);
+      const lw=document.getElementById('crLogWin');if(lw)lw.textContent=basis+(L.length?` · ${L.length} calls`:'');
+      lg.innerHTML='<thead><tr><th>When</th><th>Source</th><th>Location</th><th>Duration</th><th>Status</th></tr></thead><tbody>'+
+        (L.length?L.map(logRow).join(''):'<tr><td colspan="5" style="color:var(--muted);font-weight:400">No calls in this window. The log covers the most recent 30 days.</td></tr>')+'</tbody>';
+    }
+    document.getElementById('crNote').textContent=`CallRail \u00b7 BBZ \u00b7 ${winLab}. Answered vs missed shown by day; log lists recent individual calls.`;})();
   // ---- Search Console ----
   (function(){const src=DATA.searchconsole;
     if(!hasData(src)){phState('scNote','scKpis','Search Console data updates automatically and will appear here shortly.');if(charts.scTrend)charts.scTrend.destroy();return;}
@@ -586,24 +627,35 @@ function bodyEl(k){return k==='summary'?document.getElementById('execSum'):docum
 function makeEditable(k){const el=bodyEl(k);if(!el||el.dataset.ed)return;el.dataset.ed='1';el.setAttribute('contenteditable','true');el.setAttribute('spellcheck','false');el.title='Click to edit';el.addEventListener('input',()=>{el.removeAttribute('data-empty');lsSet(k,el.innerHTML);});}
 function setText(k,txt,empty){const el=bodyEl(k);if(!el)return;el.textContent=txt;if(empty)el.setAttribute('data-empty','1');else el.removeAttribute('data-empty');makeEditable(k);}
 function hints(){document.querySelectorAll('.anote-h').forEach(h=>{if(!h.querySelector('.edhint')){const s=document.createElement('span');s.className='edhint';s.textContent='✎ editable';h.appendChild(s);}});}
-function restoreSaved(){ALLK.forEach(k=>{const el=bodyEl(k),v=lsGet(k);if(el&&v!=null){el.innerHTML=v;el.removeAttribute('data-empty');}makeEditable(k);});}
+function restoreSaved(){ALLK.forEach(k=>{const el=bodyEl(k),v=lsGet(k);if(el&&v!=null){el.innerHTML=v;el.removeAttribute('data-empty');}makeEditable(k);});const ae=document.getElementById('actionList'),av=lsGet('actions');if(ae&&av!=null){ae.innerHTML=av;ae.removeAttribute('data-empty');}wireActions();}
+function wireActions(){const el=document.getElementById('actionList');if(!el||el.dataset.ed)return;el.dataset.ed='1';el.setAttribute('contenteditable','true');el.setAttribute('spellcheck','false');el.title='Click to edit';el.addEventListener('input',()=>{el.removeAttribute('data-empty');lsSet('actions',el.innerHTML);});}
+function renderActions(val){const el=document.getElementById('actionList');if(!el)return;
+  if(Array.isArray(val)&&val.length){el.innerHTML='<ol style="margin:0;padding-left:20px">'+val.map(a=>`<li style="margin:0 0 7px">${esc(String(a))}</li>`).join('')+'</ol>';el.removeAttribute('data-empty');}
+  else if(typeof val==='string'&&val.trim()){el.textContent=val;el.setAttribute('data-empty','1');}
+  else{el.textContent='No action items for this view.';el.setAttribute('data-empty','1');}
+  wireActions();}
 async function generateAnalysis(force){
   if(anBusy)return;
   if(!force && ALLK.some(k=>lsGet(k)!=null)){restoreSaved();hints();return;}  // keep your edits; no API call
   anBusy=true;
   const btn=document.getElementById('anBtn'); if(btn){btn.disabled=true;btn.textContent='Analyzing…';}
   ALLK.forEach(k=>setText(k,'Analyzing…',false));
+  renderActions('Analyzing…');
   try{
     const r=await fetch('/api/analyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({context:window.__SNAP||''})});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error?JSON.stringify(j.error).slice(0,200):r.status);
     ALLK.forEach(k=>{const t=(k==='summary'?j.summary:j[k])||'No notable change in this view.';setText(k,t,false);lsSet(k,t);});
+    const acts=(Array.isArray(j.actions)&&j.actions.length)?j.actions:(DATA.actionsSample||null);
+    renderActions(acts); const ae=document.getElementById('actionList'); if(ae)lsSet('actions',ae.innerHTML);
   }catch(e){
     const msg='Analysis runs on the live dashboard (needs the server connection).';
     ALLK.forEach(k=>setText(k,msg,true));
+    renderActions((DATA.actionsSample&&DATA.actionsSample.length)?DATA.actionsSample:msg);
   }finally{anBusy=false; if(btn){btn.disabled=false;btn.textContent='Regenerate analysis';} hints();}
 }
 const anBtnEl=document.getElementById('anBtn'); if(anBtnEl)anBtnEl.onclick=()=>{if(confirm('Regenerate all analysis from the live data? This replaces your edits for the current view.'))generateAnalysis(true);};
+(function(){try{var ae=document.getElementById('actionList');if(ae&&lsGet('actions')==null&&DATA.actionsSample&&DATA.actionsSample.length)renderActions(DATA.actionsSample);}catch(e){}})();
 generateAnalysis(false);
 
 
