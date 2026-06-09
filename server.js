@@ -23,8 +23,8 @@ const CALLRAIL_COMPANY = process.env.CALLRAIL_COMPANY || 'COM2377c78f5f0249d4abb
 const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns per-call rows; pulling many months is slow, so default to the last 6. Raise if your call volume is low.
 const GSC_ACCOUNT   = (process.env.GSC_ACCOUNT || 'bbzlimo.com').replace(/^sc-domain:/i, '').replace(/\/+$/, '').trim(); // BBZ Search Console property as it appears in the account_id field. We strip a leading "sc-domain:" and any trailing slash so it matches Windsor's value ("bbzlimo.com") no matter how the env var is written. The url-prefix property ("https://www.bbzlimo.com/") is intentionally NOT matched.
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
-const DASH_PASSWORD = process.env.DASH_PASSWORD || 'BBZreports2026'; // password to view the report. Change it by editing the text in quotes here (or set DASH_PASSWORD on Railway to override).
-const BUILD = 17; // bumped every deploy; surfaced in the footer and /api/health so you can confirm what's actually live
+const DASH_PASSWORD = (process.env.DASH_PASSWORD || 'BBZreports2026').trim().replace(/^["']+|["']+$/g, '').trim(); // password to view the report. Surrounding quotes/spaces (common when pasting into Railway) are stripped automatically. Change by editing the text in quotes here or set DASH_PASSWORD on Railway.
+const BUILD = 18; // bumped every deploy; surfaced in the footer and /api/health so you can confirm what's actually live
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'), 'utf8'));
@@ -440,9 +440,10 @@ function isAuthed(req) { if (!DASH_PASSWORD) return true; return parseCookies(re
 // Public: accept the password and set the auth cookie. (Registered BEFORE the gate, so it stays reachable.)
 app.post('/login', (req, res) => {
   if (!DASH_PASSWORD) return res.json({ ok: true });
-  const pw = (req.body && req.body.password) || '';
+  const pw = ((req.body && req.body.password) || '').trim();
   if (pw === DASH_PASSWORD) {
-    res.set('Set-Cookie', `bbz_auth=${AUTH_TOKEN}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax; Secure`);
+    // No "Secure" flag: lets the cookie persist on any connection (avoids a login loop if a request ever rides over HTTP).
+    res.set('Set-Cookie', `bbz_auth=${AUTH_TOKEN}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
     return res.json({ ok: true });
   }
   return res.status(401).json({ ok: false, error: 'Incorrect password.' });
@@ -457,6 +458,7 @@ app.get('/api/health', (req, res) => {
   res.set('Cache-Control', 'no-store').json({
     build: BUILD,
     passwordProtected: !!DASH_PASSWORD,
+    passwordLen: DASH_PASSWORD.length,
     liveDataReady: isFresh(),
     windsorKeySet: !!WINDSOR_KEY,
     anthropicKeySet: !!ANTHROPIC_KEY,
