@@ -23,8 +23,8 @@ const CALLRAIL_COMPANY = process.env.CALLRAIL_COMPANY || 'COM2377c78f5f0249d4abb
 const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns per-call rows; pulling many months is slow, so default to the last 6. Raise if your call volume is low.
 const GSC_ACCOUNT   = (process.env.GSC_ACCOUNT || 'bbzlimo.com').replace(/^sc-domain:/i, '').replace(/\/+$/, '').trim(); // BBZ Search Console property as it appears in the account_id field. We strip a leading "sc-domain:" and any trailing slash so it matches Windsor's value ("bbzlimo.com") no matter how the env var is written. The url-prefix property ("https://www.bbzlimo.com/") is intentionally NOT matched.
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
-const DASH_PASSWORD = process.env.DASH_PASSWORD || ''; // set this on Railway to require a password before the report can be viewed; leave unset to keep it open
-const BUILD = 15; // bumped every deploy; surfaced in the footer and /api/health so you can confirm what's actually live
+const DASH_PASSWORD = process.env.DASH_PASSWORD || 'BBZreports2026'; // password to view the report. Change it by editing the text in quotes here (or set DASH_PASSWORD on Railway to override).
+const BUILD = 17; // bumped every deploy; surfaced in the footer and /api/health so you can confirm what's actually live
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'), 'utf8'));
@@ -255,8 +255,13 @@ async function buildMeta() {
 
 // Google Business Profile — daily rows aggregated to monthly [impressions, calls, website, directions]
 async function buildGBP() {
-  const rows = await windsor('google_my_business', GBP_ACCOUNT,
-    ['year_month','impressions','call_clicks','website_clicks','direction_requests','review_total_count','review_average_rating_total'], FROM, TO());
+  const GBP_FIELDS = ['year_month','impressions','call_clicks','website_clicks','direction_requests','review_total_count','review_average_rating_total'];
+  let rows = await windsor('google_my_business', GBP_ACCOUNT, GBP_FIELDS, FROM, TO());
+  // Fallback: if the server-side account filter returns nothing (it can, depending on Windsor's state),
+  // pull unfiltered and let windsor()'s built-in code-filter scope it to BBZ's location.
+  if (!Array.isArray(rows) || !rows.length) {
+    rows = await windsor('google_my_business', GBP_ACCOUNT, GBP_FIELDS, FROM, TO(), { serverFilter: false });
+  }
   const data = {}, months = new Set(); let reviews = 0, rating = 0;
   for (const r of rows) {
     const ym = normYM(r.year_month); if (!ym) continue;

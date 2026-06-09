@@ -11,7 +11,7 @@
 <style>
   :root{
     --black:#0d0d0f;--char:#161719;--ink:#24262b;--ink2:#585c64;--muted:#9a9ea6;--faint:#bcbfc5;
-    --gold:#c0a35e;--gold-lt:#dcc28d;--gold-dk:#a3884a;--paper:#fff;--bg:#ffffff;--line:#e7e3db;--line2:#f0ede7;
+    --gold:#c0a35e;--gold-lt:#dcc28d;--gold-dk:#a3884a;--paper:#fff;--bg:#eceae3;--line:#e7e3db;--line2:#f0ede7;
     --pos:#3f9e74;--neg:#cf6b5f;--flatbg:#eceef0;--flat:#8b8f97;
     --c1:#c0a35e;--c2:#2b2d33;--c3:#6e8298;--c4:#8a9b7e;--c5:#b5835f;--c6:#9a7e8d;--c7:#88939b;--c8:#d3c08f;--c9:#6f6280;
     --serif:'Fraunces',Georgia,serif;--sans:'Hanken Grotesk',-apple-system,Arial,sans-serif;
@@ -54,13 +54,14 @@
   .block .note{font-size:13px;color:var(--ink);font-weight:500;margin:0 0 16px;padding:9px 13px;background:#faf8f3;border:1px solid #efe9dc;border-left:3px solid var(--gold);border-radius:0 8px 8px 0}
 
   .sechead{display:flex;align-items:center;gap:14px;margin:56px 0 18px;padding-bottom:15px;border-bottom:1px solid var(--line)}
-  .secnum{width:30px;height:30px;border-radius:50%;background:var(--black);color:var(--gold-lt);font-family:var(--serif);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .secnum{width:30px;height:30px;border-radius:50%;background:var(--accent,var(--black));color:#fff;font-family:var(--serif);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 2px 8px -3px var(--accent,rgba(0,0,0,.4))}
   .tt{font-family:var(--serif);font-size:23px;font-weight:600;color:var(--ink);line-height:1.05;letter-spacing:.005em}
   .ss{font-size:10.5px;color:var(--gold-dk);letter-spacing:.16em;text-transform:uppercase;margin-top:5px;font-weight:700}
   .subhead{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);font-weight:700;margin:30px 0 12px;display:flex;align-items:center;gap:10px}
   .subhead::after{content:"";flex:1;height:1px;background:var(--line2)}
-  .block{background:#fff;border:1px solid #e4e0d7;border-radius:16px;padding:6px 24px 26px;margin:30px 0;box-shadow:0 1px 2px rgba(16,17,21,.04),0 24px 54px -36px rgba(16,17,21,.32)}
-  .block .sechead{margin:0 -24px 20px;padding:19px 24px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#faf9f6,#fff);border-radius:16px 16px 0 0}
+  .block{background:#fff;border:1px solid #e4e0d7;border-top:3px solid var(--accent,var(--gold));border-radius:14px;padding:6px 24px 26px;margin:40px 0;box-shadow:0 1px 2px rgba(16,17,21,.04),0 24px 54px -36px rgba(16,17,21,.32)}
+  .block .sechead{margin:0 -24px 20px;padding:19px 24px;border-bottom:2px solid var(--line);background:#faf9f6;background:color-mix(in srgb,var(--accent,var(--gold)) 9%,#fff);border-bottom-color:color-mix(in srgb,var(--accent,var(--gold)) 38%,var(--line));border-radius:11px 11px 0 0}
+  .block .sechead .ss{color:var(--accent,var(--gold-dk))}
   .block .card{box-shadow:none;border-color:#ece9e2;background:#fcfbf9}
   .block .kpi{box-shadow:none;border-color:#ece9e2;background:#fcfbf9}
   .block .subhead:first-of-type{margin-top:6px}
@@ -118,6 +119,14 @@
   tr.exp[data-haskids="0"] .tname,#scQTable .tname{font-weight:500}
   .thmb{width:30px;height:30px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid #e6e0d4}
   #scQTable tr.qrow{cursor:pointer}
+  .treetools{float:right;font-weight:400;text-transform:none;letter-spacing:0}
+  .tlink{color:var(--gold-dk);cursor:pointer;font-size:11px;font-weight:600}
+  .tlink:hover{text-decoration:underline}
+  .pager{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px}
+  .pgbtn{font-family:var(--sans);font-size:12px;font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 14px;cursor:pointer}
+  .pgbtn:hover:not(:disabled){border-color:var(--gold);color:var(--gold-dk)}
+  .pgbtn:disabled{opacity:.4;cursor:default}
+  .pginfo{font-size:11.5px;color:var(--ink2);font-weight:600;font-variant-numeric:tabular-nums}
 
   footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.6}
   footer b{color:var(--ink2)}
@@ -170,10 +179,10 @@
 
 <div class="wrap">
   <div class="exec">
-    <div class="exec-h"><span>Executive Summary</span></div>
+    <div class="exec-h"><span>Executive Summary</span><button class="exec-btn" id="anBtn">Regenerate analysis</button></div>
     <div class="exec-b" id="execSum" data-empty="1">A marketing summary of this view appears here on the live dashboard.</div>
   </div>
-  <section class="block">
+  <section class="block" style="--accent:#6e8298">
   <div class="sechead"><div class="secnum">1</div><div><div class="tt">Google Analytics 4</div><div class="ss">Website Performance</div></div></div>
   <div class="grid g5" id="kpis"></div>
 
@@ -200,17 +209,17 @@
 
   <div class="anote" id="anGa4"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
   </section>
-  <section class="block">
+  <section class="block" style="--accent:#8a9b7e">
   <div class="sechead"><div class="secnum">2</div><div><div class="tt">Google Ads</div><div class="ss">Paid Search</div></div></div>
   <div class="note" id="gadsNote"></div>
   <div class="grid g4" id="gadsKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3 id="gadsTrendTitle">Spend &amp; conversions — trailing 12 months</h3><div class="chartwrap" style="height:250px"><canvas id="gadsTrend"></canvas></div><div class="legend" id="gadsLeg"></div></div>
-  <div class="card" style="margin-top:14px"><h3>Campaign &#9656; ad group &#9656; keyword <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— click a row to expand</span></h3><table id="gadsTable"></table>
+  <div class="card" style="margin-top:14px"><h3>Campaign &#9656; ad group &#9656; keyword <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— click a row to expand</span><span class="treetools" id="gadsTools"></span></h3><table id="gadsTable"></table>
   <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">Keyword rows show spend attributed to specific search terms. Campaign totals above can run higher, since some spend isn't tied to a single keyword (broad match, search partners). Impression Share is the percentage of available searches where your ad appeared.</div></div>
 
   <div class="anote" id="anGads"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
   </section>
-  <section class="block">
+  <section class="block" style="--accent:#9a7e8d">
   <div class="sechead"><div class="secnum">3</div><div><div class="tt">Meta Ads</div><div class="ss">Paid Social</div></div></div>
   <div class="note" id="metaNote"></div>
   <div class="grid g4" id="metaKpis" style="margin-bottom:14px"></div>
@@ -218,11 +227,11 @@
     <div class="card"><h3 id="metaTrendTitle">Spend &amp; leads — trailing 12 months</h3><div class="chartwrap" style="height:250px"><canvas id="metaTrend"></canvas></div><div class="legend" id="metaLeg"></div></div>
     <div class="card"><h3>Clicks by placement <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— where your ads ran</span></h3><div class="chartwrap" style="height:250px"><canvas id="metaPlace"></canvas></div><div class="legend" id="metaPlaceLeg"></div></div>
   </div>
-  <div class="card" style="margin-top:14px"><h3>Campaign &#9656; ad set &#9656; ad <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— click a row to expand, ad level shows creative</span></h3><table id="metaTable"></table></div>
+  <div class="card" style="margin-top:14px"><h3>Campaign &#9656; ad set &#9656; ad <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— click a row to expand, ad level shows creative</span><span class="treetools" id="metaTools"></span></h3><table id="metaTable"></table></div>
 
   <div class="anote" id="anMeta"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
   </section>
-  <section class="block">
+  <section class="block" style="--accent:#b5835f">
   <div class="sechead"><div class="secnum">4</div><div><div class="tt">Google Business Profile</div><div class="ss">Local Presence</div></div></div>
   <div class="note" id="gbpNote"></div>
   <div class="grid g4" id="gbpKpis" style="margin-bottom:14px"></div>
@@ -230,16 +239,16 @@
 
   <div class="anote" id="anGbp"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
   </section>
-  <section class="block">
+  <section class="block" style="--accent:#6f6280">
   <div class="sechead"><div class="secnum">5</div><div><div class="tt">Phone Calls</div><div class="ss">Call Tracking · CallRail</div></div></div>
   <div class="note" id="crNote"></div>
   <div class="grid g3" id="crKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3>Call volume by day <span id="crDayWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><div class="chartwrap" style="height:240px"><canvas id="crTrend"></canvas></div></div>
-  <div class="card" style="margin-top:14px"><h3>Call log <span id="crLogWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><table id="crLog"></table></div>
+  <div class="card" style="margin-top:14px"><h3>Call log <span id="crLogWin" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></h3><table id="crLog"></table><div class="pager" id="crLogPager"></div></div>
 
   <div class="anote" id="anCr"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
   </section>
-  <section class="block">
+  <section class="block" style="--accent:#88939b">
   <div class="sechead"><div class="secnum">6</div><div><div class="tt">Search Console</div><div class="ss">Organic Search</div></div></div>
   <div class="note" id="scNote"></div>
   <div class="grid g4" id="scKpis" style="margin-bottom:14px"></div>
@@ -272,7 +281,7 @@
 
 <script>
 /*__DATA__*/
-try{var __B='build 15';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
+try{var __B='build 17';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
 const C=getComputedStyle(document.documentElement),col=n=>C.getPropertyValue('--'+n).trim();
 const PAL=['c1','c2','c3','c4','c5','c6','c7','c8','c9'].map(col);
 const HASCHART=typeof Chart!=='undefined';
@@ -367,6 +376,15 @@ function treeToggle(e){
   if(tr.classList.toggle('open')){const id=tr.dataset.id;rows.forEach(r=>{if(r.dataset.parent===id)r.style.display='';});if(cz)cz.textContent='▾';}
   else{const kill=new Set([tr.dataset.id]);rows.forEach(r=>{if(kill.has(r.dataset.parent)){r.style.display='none';if(r.classList.contains('open')){r.classList.remove('open');const c=r.querySelector('.caret');if(c)c.textContent='▸';}kill.add(r.dataset.id);}});if(cz)cz.textContent='▸';}
 }
+function treeSetCaret(r,open){const c=r.querySelector('.caret');if(c&&r.dataset.haskids==='1')c.textContent=open?'▾':'▸';}
+function treeExpandAll(tableId){const t=document.getElementById(tableId);if(!t)return;t.querySelectorAll('tr.exp').forEach(r=>{r.style.display='';if(r.dataset.haskids==='1'){r.classList.add('open');treeSetCaret(r,true);}});}
+function treeCollapseAll(tableId){const t=document.getElementById(tableId);if(!t)return;t.querySelectorAll('tr.exp').forEach(r=>{if(r.dataset.parent!==''){r.style.display='none';}r.classList.remove('open');treeSetCaret(r,false);});}
+function treeExpandTop(tableId){const t=document.getElementById(tableId);if(!t)return;const rows=[...t.querySelectorAll('tr.exp')],top=new Set();
+  rows.forEach(r=>{if(r.dataset.parent===''){top.add(r.dataset.id);if(r.dataset.haskids==='1'){r.classList.add('open');treeSetCaret(r,true);}}});
+  rows.forEach(r=>{if(top.has(r.dataset.parent))r.style.display='';});}
+function treeTools(toolsId,tableId){const tt=document.getElementById(toolsId);if(!tt)return;
+  tt.innerHTML='<span class="tlink" data-act="expand">Expand all</span> · <span class="tlink" data-act="collapse">Collapse all</span>';
+  if(!tt.__wired){tt.__wired=true;tt.addEventListener('click',e=>{const a=e.target.closest('.tlink');if(!a)return;if(a.dataset.act==='expand')treeExpandAll(tableId);else treeCollapseAll(tableId);});}}
 // Google Ads: leaf [clicks,impr,cost,conv,eligImpr,imprWithIS]; sort by cost
 function gadsRow(name,val,m){const a=numv(val);
   const ctr=a[1]?a[0]/a[1]:0,cpc=a[0]?a[2]/a[0]:0,cpa=a[3]?a[2]/a[3]:0,is=a[4]>0?a[5]/a[4]:null;
@@ -516,14 +534,16 @@ function render(){
     if(src.detail&&Object.keys(src.detail).length){
       if(kind==='meta') buildTree(ids.table,['Campaign / Ad set / Ad','Spend','Leads','Clicks','CTR','Avg CPC','CPL'],metaLevels,aggMeta(src.detail,win));
       else buildTree(ids.table,['Campaign / Ad group / Keyword','Spend','Clicks','CTR','Avg CPC','Conv.','CPA','Impr. Share'],gadsLevels,aggGads(src.detail,win));
+      treeExpandTop(ids.table);                 // default: show campaigns and their ad groups/ad sets
+      if(ids.tools)treeTools(ids.tools,ids.table);
     }else{
       document.getElementById(ids.table).innerHTML='<thead><tr><th>Campaign</th><th>Spend</th><th>Clicks</th><th>'+lineLab+'</th><th>'+perLab+'</th></tr></thead><tbody>'+
         br.map(([c,a])=>{const cp=a[3]?a[2]/a[3]:0;return `<tr><td>${c}</td><td>${money(a[2])}</td><td>${fmt(a[0])}</td><td>${fmt(a[3])}</td><td>${a[3]?money(cp):'—'}</td></tr>`;}).join('')+'</tbody>';
     }
     return {now,prev,br};
   }
-  const gA=paidSection(DATA.gads,{kpis:'gadsKpis',trend:'gadsTrend',leg:'gadsLeg',table:'gadsTable'},GADS_KPI,'c2','Conversions','CPA','gads');
-  const mA=paidSection(DATA.meta,{kpis:'metaKpis',trend:'metaTrend',leg:'metaLeg',table:'metaTable',place:'metaPlace',placeLeg:'metaPlaceLeg'},META_KPI,'c6','Leads','CPL','meta');
+  const gA=paidSection(DATA.gads,{kpis:'gadsKpis',trend:'gadsTrend',leg:'gadsLeg',table:'gadsTable',tools:'gadsTools'},GADS_KPI,'c2','Conversions','CPA','gads');
+  const mA=paidSection(DATA.meta,{kpis:'metaKpis',trend:'metaTrend',leg:'metaLeg',table:'metaTable',place:'metaPlace',placeLeg:'metaPlaceLeg',tools:'metaTools'},META_KPI,'c6','Leads','CPL','meta');
   document.getElementById('gadsNote').textContent=`Google Ads · BBZ Limo account · ${winLab}. Lower CPA is better. (Channel/Region/City filters apply to GA4 only.)`;
   document.getElementById('metaNote').textContent=`Meta — Facebook & Instagram · BBZ Limo account · ${winLab}. Lower CPL is better.`;
   const paidSnap=`Google Ads (current vs comparison): Cost ${money(gA.now[2])} vs ${money(gA.prev[2])}; Conversions ${fmt(gA.now[3])} vs ${fmt(gA.prev[3])}; CPA ${money(gA.now[-1])}. Top campaigns by spend: `+gA.br.slice(0,6).map(x=>`${x[0]} ${money(x[1][2])}/${fmt(x[1][3])} conv`).join(', ')+`.\n`+
@@ -579,10 +599,26 @@ function render(){
         const caller=`${c.n?esc(c.n):'Unknown caller'}${c.ls==='good_lead'?`<span style="${leadBadge}">LEAD</span>`:''}${c.p?`<div style="font-size:10px;color:var(--muted);font-weight:400">${esc(c.p)}</div>`:''}`;
         return `<tr><td class="tname">${when}${c.f?`<span style="${badge}">NEW</span>`:''}</td><td class="tname">${caller}</td><td class="tname">${esc(c.s)}</td><td class="tname" style="font-weight:400">${c.kw?esc(c.kw):'—'}</td><td>${c.a?fmtDur(c.d):'—'}</td><td>${status}</td></tr>`;};
       let L=(src.log||[]).filter(c=>{const d=(c.t||'').slice(0,10);return d>=winStart&&d<=winEnd;}),basis='— '+winLab;
-      if(!L.length){L=(src.log||[]).slice(0,60);basis='— most recent (last 30 days)';}else L=L.slice(0,150);
+      if(!L.length){L=(src.log||[]).slice(0,60);basis='— most recent (last 30 days)';}else L=L.slice(0,300);
       const lw=document.getElementById('crLogWin');if(lw)lw.textContent=basis+(L.length?` · ${L.length} calls`:'');
-      lg.innerHTML='<thead><tr><th>When</th><th>Caller</th><th>Source</th><th>Keywords</th><th>Duration</th><th>Status</th></tr></thead><tbody>'+
-        (L.length?L.map(logRow).join(''):'<tr><td colspan="6" style="color:var(--muted);font-weight:400">No calls in this window. The log covers the most recent 30 days.</td></tr>')+'</tbody>';
+      const head='<thead><tr><th>When</th><th>Caller</th><th>Source</th><th>Keywords</th><th>Duration</th><th>Status</th></tr></thead>';
+      const empty='<tr><td colspan="6" style="color:var(--muted);font-weight:400">No calls in this window. The log covers the most recent 30 days.</td></tr>';
+      const PER=15, pages=Math.max(1,Math.ceil(L.length/PER)); let page=0;
+      const pager=document.getElementById('crLogPager');
+      function drawPage(){
+        const s=page*PER, slice=L.slice(s,s+PER);
+        lg.innerHTML=head+'<tbody>'+(slice.length?slice.map(logRow).join(''):empty)+'</tbody>';
+        if(!pager)return;
+        if(L.length<=PER){pager.innerHTML='';return;}
+        const from=s+1,to=Math.min(s+PER,L.length);
+        pager.innerHTML=`<button class="pgbtn" id="crPrev" ${page===0?'disabled':''}>\u2039 Prev</button>`
+          +`<span class="pginfo">${from}\u2013${to} of ${L.length}</span>`
+          +`<button class="pgbtn" id="crNext" ${page>=pages-1?'disabled':''}>Next \u203a</button>`;
+        const pv=document.getElementById('crPrev'),nx=document.getElementById('crNext');
+        if(pv)pv.onclick=()=>{if(page>0){page--;drawPage();}};
+        if(nx)nx.onclick=()=>{if(page<pages-1){page++;drawPage();}};
+      }
+      drawPage();
     }
     document.getElementById('crNote').textContent=`CallRail \u00b7 BBZ \u00b7 ${winLab}. Answered vs missed shown by day; log lists recent individual calls.`;})();
   // ---- Search Console ----
