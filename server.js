@@ -6,6 +6,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -22,9 +23,51 @@ const CALLRAIL_COMPANY = process.env.CALLRAIL_COMPANY || 'COM2377c78f5f0249d4abb
 const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns per-call rows; pulling many months is slow, so default to the last 6. Raise if your call volume is low.
 const GSC_ACCOUNT   = process.env.GSC_ACCOUNT || 'bbzlimo.com'; // BBZ Search Console property as it appears in the account_id field (the sc-domain property; the url-prefix one is "https://www.bbzlimo.com/")
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
+const DASH_PASSWORD = process.env.DASH_PASSWORD || ''; // set this on Railway to require a password before the report can be viewed; leave unset to keep it open
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'), 'utf8'));
+
+// Branded password screen shown when DASH_PASSWORD is set and the visitor isn't authenticated yet.
+const LOGIN_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BBZ Limousine — Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0d0d0f;font-family:'Hanken Grotesk',Arial,sans-serif;color:#fff;padding:24px}
+.box{width:100%;max-width:360px;text-align:center}
+.mark{margin-bottom:34px;line-height:1}
+.mark .w{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:46px;letter-spacing:.06em}
+.mark .rule{height:1px;background:#c0a35e;margin:7px auto 6px;width:140px}
+.mark .sub{font-size:8.5px;letter-spacing:.26em;color:#cfd2d6}
+h1{font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:19px;margin-bottom:6px}
+p.sub2{font-size:12px;color:#8a8d92;letter-spacing:.03em;margin-bottom:24px}
+input{width:100%;font-family:inherit;font-size:14px;color:#fff;background:#161719;border:1px solid #2a2b2f;border-radius:8px;padding:12px 14px;text-align:center;letter-spacing:.04em}
+input:focus{outline:none;border-color:#c0a35e}
+button{width:100%;margin-top:12px;font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1a1208;background:#c0a35e;border:0;border-radius:8px;padding:12px;cursor:pointer}
+button:hover{background:#cdb068}button:disabled{opacity:.6;cursor:default}
+.err{min-height:18px;margin-top:12px;font-size:12px;color:#cf6b5f}
+.foot{margin-top:30px;font-size:8px;letter-spacing:.28em;color:#54565b;text-transform:uppercase}
+</style></head>
+<body><div class="box">
+<div class="mark"><div class="w">BBZ</div><div class="rule"></div><div class="sub">LIMOUSINE &amp; LIVERY SERVICE</div></div>
+<h1>Performance Dashboard</h1><p class="sub2">Enter the password to view this report.</p>
+<input id="pw" type="password" placeholder="Password" autofocus autocomplete="current-password">
+<button id="go">View Report</button>
+<div class="err" id="err"></div>
+<div class="foot">Astoria Advertising Company</div>
+</div>
+<script>
+var pw=document.getElementById('pw'),go=document.getElementById('go'),err=document.getElementById('err');
+function submit(){err.textContent='';go.disabled=true;go.textContent='Checking...';
+ fetch('/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:pw.value})})
+ .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+ .then(function(x){if(x.ok&&x.j&&x.j.ok){location.href='/';}else{err.textContent=(x.j&&x.j.error)||'Incorrect password.';go.disabled=false;go.textContent='View Report';pw.value='';pw.focus();}})
+ .catch(function(){err.textContent='Something went wrong. Please try again.';go.disabled=false;go.textContent='View Report';});}
+go.addEventListener('click',submit);
+pw.addEventListener('keydown',function(e){if(e.key==='Enter')submit();});
+</script></body></html>`;
 
 // ----------------------------------------------------------------------------
 // Windsor.ai REST pull. IMPORTANT: Windsor's API returns EVERY connected account
@@ -130,7 +173,7 @@ async function buildGadsDetail() {
   let rows;
   try {
     rows = await windsor('google_ads', GADS_ACCOUNT,
-      ['year_month','campaign','ad_group_name','keyword_text','clicks','impressions','cost','conversions'],
+      ['year_month','campaign','ad_group_name','keyword_text','clicks','impressions','cost','conversions','search_impression_share'],
       trailingFrom(13), TO());
   } catch { return {}; }
   if (!Array.isArray(rows)) return {};
@@ -141,8 +184,10 @@ async function buildGadsDetail() {
     const M = out[ym] || (out[ym] = {});
     const C = M[c] || (M[c] = {});
     const G = C[g] || (C[g] = {});
-    const v = G[k] || (G[k] = [0,0,0,0]);
-    v[0]+=+r.clicks||0; v[1]+=+r.impressions||0; v[2]+=+r.cost||0; v[3]+=+r.conversions||0;
+    const v = G[k] || (G[k] = [0,0,0,0,0,0]);
+    const impr = +r.impressions||0, is = +r.search_impression_share||0; // is is a 0..1 ratio
+    v[0]+=+r.clicks||0; v[1]+=impr; v[2]+=+r.cost||0; v[3]+=+r.conversions||0;
+    if (is > 0) { v[4]+=impr/is; v[5]+=impr; } // v[4]=eligible impressions, v[5]=impressions that carried an IS value
   }
   return out;
 }
@@ -171,6 +216,26 @@ async function buildMetaDetail() {
   return out;
 }
 
+// Meta placement breakdown: clicks/impressions/spend by publisher platform, per month.
+// placements[ym][platform] = [clicks, impressions, spend].
+async function buildMetaPlacements() {
+  let rows;
+  try {
+    rows = await windsor('facebook', META_ACCOUNT,
+      ['year_month','publisher_platform','clicks','impressions','spend'],
+      trailingFrom(13), TO());
+  } catch { return {}; }
+  if (!Array.isArray(rows)) return {};
+  const out = {};
+  for (const r of rows) {
+    const ym = normYM(r.year_month), p = r.publisher_platform || 'unknown'; if (!ym) continue;
+    const M = out[ym] || (out[ym] = {});
+    const v = M[p] || (M[p] = [0,0,0]);
+    v[0]+=+r.clicks||0; v[1]+=+r.impressions||0; v[2]+=+r.spend||0;
+  }
+  return out;
+}
+
 async function buildGads() {
   const base = buildPaid(
     await windsor('google_ads', GADS_ACCOUNT, ['year_month','campaign','clicks','impressions','cost','conversions'], FROM, TO()),
@@ -183,6 +248,7 @@ async function buildMeta() {
     await windsor('facebook', META_ACCOUNT, ['year_month','campaign','clicks','impressions','spend','actions_lead','reach'], FROM, TO()),
     ['clicks','impressions','spend','actions_lead','reach']);
   base.detail = await buildMetaDetail();
+  base.placements = await buildMetaPlacements();
   return base;
 }
 
@@ -216,7 +282,7 @@ async function buildCallRail() {
   let rows;
   try {
     rows = await windsor('callrail', CALLRAIL_COMPANY,
-      ['year_month','date','calls__id','calls__answered','calls__first_call','calls__source'],
+      ['year_month','date','calls__id','calls__answered','calls__first_call','calls__source','calls__lead_status','calls__duration'],
       from, TO(), { acctField: 'calls__company_id', date_filters: { calls: 'calls__start_time' } });
   } catch { return { months: [], data: {}, empty: true }; }
   if (!Array.isArray(rows) || !rows.length) return { months: [], data: {}, empty: true };
@@ -225,8 +291,10 @@ async function buildCallRail() {
   for (const r of rows) {
     const ym = normYM(r.year_month); if (!ym) continue; months.add(ym);
     const ans = isTrue(r.calls__answered), fst = isTrue(r.calls__first_call);
-    const cur = (data[ym] = data[ym] || [0,0,0]);
+    const cur = (data[ym] = data[ym] || [0,0,0,0,0]);
     cur[0] += 1; if (ans) cur[1] += 1; if (fst) cur[2] += 1;
+    if (r.calls__lead_status === 'good_lead') cur[3] += 1;   // good_lead is CallRail's "qualified lead" flag
+    cur[4] += +r.calls__duration || 0;                       // running total of call seconds, for the Avg Duration KPI
     const day = (r.date || '').slice(0, 10);
     if (day) { const dd = (daily[day] = daily[day] || [0,0,0]); dd[0] += 1; if (ans) dd[1] += 1; if (fst) dd[2] += 1; }
     const s = r.calls__source || 'Unknown';
@@ -244,7 +312,7 @@ async function buildCallRailLog() {
   let rows;
   try {
     rows = await windsor('callrail', CALLRAIL_COMPANY,
-      ['calls__start_time','calls__source','calls__duration','calls__answered','calls__first_call','calls__customer_city','calls__customer_state','calls__direction'],
+      ['calls__start_time','calls__source','calls__duration','calls__answered','calls__first_call','calls__customer_city','calls__customer_state','calls__direction','calls__customer_name','calls__customer_phone_number','calls__keywords','calls__lead_status'],
       from, TO(), { acctField: 'calls__company_id', date_filters: { calls: 'calls__start_time' } });
   } catch { return []; }
   if (!Array.isArray(rows)) return [];
@@ -256,7 +324,11 @@ async function buildCallRailLog() {
     a: isTrue(r.calls__answered),
     f: isTrue(r.calls__first_call),
     c: [r.calls__customer_city, r.calls__customer_state].filter(Boolean).join(', '),
-    dir: r.calls__direction || ''
+    dir: r.calls__direction || '',
+    n: r.calls__customer_name || '',
+    p: r.calls__customer_phone_number || '',
+    kw: r.calls__keywords || '',
+    ls: r.calls__lead_status || ''
   })).filter(x => x.t).sort((a, b) => (a.t < b.t ? 1 : -1));
   return log.slice(0, 300);
 }
@@ -348,6 +420,34 @@ function warm() {
   if (!WINDSOR_KEY || isFresh() || inflight) return;
   inflight = refresh().catch(e => console.error('warm failed:', e.message)).finally(() => { inflight = null; });
 }
+
+// ---------------------------------------------------------------------------
+// Optional password gate. Set DASH_PASSWORD on the server to require a password
+// before the report (and its data endpoints) can be viewed. Leave it unset to
+// keep the report open. The plaintext password is never stored in the cookie;
+// we store a one-way hash of it and re-derive + compare on every request.
+// ---------------------------------------------------------------------------
+const AUTH_TOKEN = DASH_PASSWORD ? crypto.createHash('sha256').update('bbz::' + DASH_PASSWORD).digest('hex') : '';
+function parseCookies(h) { const o = {}; (h || '').split(';').forEach(p => { const i = p.indexOf('='); if (i > 0) o[p.slice(0, i).trim()] = p.slice(i + 1).trim(); }); return o; }
+function isAuthed(req) { if (!DASH_PASSWORD) return true; return parseCookies(req.headers.cookie).bbz_auth === AUTH_TOKEN; }
+
+// Public: accept the password and set the auth cookie. (Registered BEFORE the gate, so it stays reachable.)
+app.post('/login', (req, res) => {
+  if (!DASH_PASSWORD) return res.json({ ok: true });
+  const pw = (req.body && req.body.password) || '';
+  if (pw === DASH_PASSWORD) {
+    res.set('Set-Cookie', `bbz_auth=${AUTH_TOKEN}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax; Secure`);
+    return res.json({ ok: true });
+  }
+  return res.status(401).json({ ok: false, error: 'Incorrect password.' });
+});
+
+// Gate everything below: serve the login screen for page views, 401 for API calls.
+app.use((req, res, next) => {
+  if (isAuthed(req)) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Authentication required.' });
+  res.set('Cache-Control', 'no-store').type('html').send(LOGIN_PAGE);
+});
 
 // ---- the page: render INSTANTLY from cache (or snapshot), refresh in background ----
 app.get('/', (req, res) => {
