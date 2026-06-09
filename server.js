@@ -23,8 +23,11 @@ const CALLRAIL_COMPANY = process.env.CALLRAIL_COMPANY || 'COM2377c78f5f0249d4abb
 const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns per-call rows; pulling many months is slow, so default to the last 6. Raise if your call volume is low.
 const GSC_ACCOUNT   = (process.env.GSC_ACCOUNT || 'bbzlimo.com').replace(/^sc-domain:/i, '').replace(/\/+$/, '').trim(); // BBZ Search Console property as it appears in the account_id field. We strip a leading "sc-domain:" and any trailing slash so it matches Windsor's value ("bbzlimo.com") no matter how the env var is written. The url-prefix property ("https://www.bbzlimo.com/") is intentionally NOT matched.
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
-const DASH_PASSWORD = (process.env.DASH_PASSWORD || 'BBZreports2026').trim().replace(/^["']+|["']+$/g, '').trim(); // password to view the report. Surrounding quotes/spaces (common when pasting into Railway) are stripped automatically. Change by editing the text in quotes here or set DASH_PASSWORD on Railway.
-const BUILD = 18; // bumped every deploy; surfaced in the footer and /api/health so you can confirm what's actually live
+// Report password. Hardcoded on purpose so there is no Railway variable to misconfigure.
+// To change it later, edit the text inside the quotes and redeploy. Any DASH_PASSWORD
+// variable on Railway is now IGNORED, so it is safe to delete it there.
+const DASH_PASSWORD = 'BBZLimo123!';
+const BUILD = 19; // bumped every deploy; surfaced in the footer and /api/health so you can confirm what's actually live
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'), 'utf8'));
