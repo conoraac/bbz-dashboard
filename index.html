@@ -101,6 +101,7 @@
   .kpi .d{font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
   .kpi .d .vs{color:var(--muted);font-weight:500}
   .up{color:var(--pos)}.dn{color:var(--neg)}.flat{color:var(--flat)}
+  .chg{font-size:9px;font-weight:700;margin-top:3px;line-height:1.1;letter-spacing:.01em}
 
   .chartwrap{position:relative;width:100%}
   .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
@@ -225,7 +226,7 @@
   <div class="grid g4" id="gadsKpis" style="margin-bottom:14px"></div>
   <div class="card"><h3 id="gadsTrendTitle">Spend &amp; conversions — trailing 12 months</h3><div class="chartwrap" style="height:250px"><canvas id="gadsTrend"></canvas></div><div class="legend" id="gadsLeg"></div></div>
   <div class="card" style="margin-top:14px"><h3>Campaign &#9656; ad group &#9656; keyword <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">— click a row to expand</span><span class="treetools" id="gadsTools"></span></h3><table id="gadsTable"></table>
-  <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">Keyword rows show spend attributed to specific search terms. Campaign totals above can run higher, since some spend isn't tied to a single keyword (broad match, search partners). Impression Share is the percentage of available searches where your ad appeared. vs Comp shows the change in conversions against the comparison period set at the top of the report.</div></div>
+  <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">Keyword rows show spend attributed to specific search terms. Campaign totals above can run higher, since some spend isn't tied to a single keyword (broad match, search partners). Impression Share is the percentage of available searches where your ad appeared. The small figure under each metric is its change versus the comparison period set at the top of the report — green is an improvement, red is worse (for cost metrics like CPC and CPA, down is green).</div></div>
 
   <div class="anote" id="anGads"><div class="anote-h">Analyst's Note</div><div class="anote-b" data-empty="1">Analysis runs on the live dashboard.</div></div>
   </section>
@@ -292,7 +293,7 @@
 
 <script>
 /*__DATA__*/
-try{var __B='build 24';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
+try{var __B='build 25';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
 const C=getComputedStyle(document.documentElement),col=n=>C.getPropertyValue('--'+n).trim();
 const PAL=['c1','c2','c3','c4','c5','c6','c7','c8','c9'].map(col);
 const HASCHART=typeof Chart!=='undefined';
@@ -410,11 +411,26 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAdLightbox();});
 // Google Ads: leaf [clicks,impr,cost,conv,eligImpr,imprWithIS]; sort by cost
+// Per-metric change vs the comparison window. goodUp: true=higher is better, false=lower is better (cost), null=neutral.
+function chg(cur,prev,goodUp){
+  if(!prev&&!cur)return{t:'',c:'flat'};
+  if(!prev)return{t:'new',c:'flat'};
+  const p=(cur-prev)/prev*100, rose=cur>=prev;
+  return{t:(rose?'▲':'▼')+' '+Math.abs(p).toFixed(0)+'%', c:goodUp===null?'flat':((rose===goodUp)?'up':'dn')};
+}
+function dcell(v,d){return `<td>${v}${d.t?`<div class="chg ${d.c}">${d.t}</div>`:''}</td>`;}
 function gadsRow(name,val,m){const a=numv(val),p=val.p||[0,0,0,0,0,0];
   const ctr=a[1]?a[0]/a[1]:0,cpc=a[0]?a[2]/a[0]:0,cpa=a[3]?a[2]/a[3]:0,is=a[4]>0?a[5]/a[4]:null;
-  const d=delta(a[3],p[3]);                       // change in conversions vs the comparison window
+  const pctr=p[1]?p[0]/p[1]:0,pcpc=p[0]?p[2]/p[0]:0,pcpa=p[3]?p[2]/p[3]:0,pis=p[4]>0?p[5]/p[4]:null;
   return trOpen(m)+nameCell(name,m.depth,m.hasKids)
-    +`<td>${money(a[2])}</td><td>${fmt(a[0])}</td><td>${a[1]?pct(ctr):'—'}</td><td>${a[0]?money(cpc):'—'}</td><td>${fmt(a[3])}</td><td>${a[3]?money(cpa):'—'}</td><td>${is!=null?pct(Math.min(is,1)):'—'}</td><td class="${d.c}">${d.t}</td></tr>`;}
+    +dcell(money(a[2]),chg(a[2],p[2],null))
+    +dcell(fmt(a[0]),chg(a[0],p[0],true))
+    +dcell(a[1]?pct(ctr):'—',chg(ctr,pctr,true))
+    +dcell(a[0]?money(cpc):'—',chg(cpc,pcpc,false))
+    +dcell(fmt(a[3]),chg(a[3],p[3],true))
+    +dcell(a[3]?money(cpa):'—',chg(cpa,pcpa,false))
+    +dcell(is!=null?pct(Math.min(is,1)):'—',chg(is||0,pis||0,true))
+    +'</tr>';}
 const gadsLevels=[{sv:v=>numv(v)[2],row:gadsRow},{sv:v=>numv(v)[2],row:gadsRow},{sv:v=>numv(v)[2],row:gadsRow}];
 function aggGads(detail,win,comp){
   const root={}, node=()=>({t:[0,0,0,0,0,0],p:[0,0,0,0,0,0],ch:{}});
@@ -561,7 +577,7 @@ function render(){
     const br=paidBreak(src,win);
     if(src.detail&&Object.keys(src.detail).length){
       if(kind==='meta') buildTree(ids.table,['Campaign / Ad set / Ad','Spend','Leads','Clicks','CTR','Avg CPC','CPL'],metaLevels,aggMeta(src.detail,win));
-      else buildTree(ids.table,['Campaign / Ad group / Keyword','Spend','Clicks','CTR','Avg CPC','Conv.','CPA','Impr. Share','vs Comp'],gadsLevels,aggGads(src.detail,win,comp));
+      else buildTree(ids.table,['Campaign / Ad group / Keyword','Spend','Clicks','CTR','Avg CPC','Conv.','CPA','Impr. Share'],gadsLevels,aggGads(src.detail,win,comp));
       treeExpandTop(ids.table);                 // default: show campaigns and their ad groups/ad sets
       if(ids.tools)treeTools(ids.tools,ids.table);
     }else{
