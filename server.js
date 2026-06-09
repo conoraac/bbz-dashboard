@@ -21,9 +21,10 @@ const GBP_ACCOUNT   = process.env.GBP_ACCOUNT || 'locations/8839500927202128335'
 const CALLRAIL_ACCOUNT = process.env.CALLRAIL_ACCOUNT || '842-760-809'; // BBZ's CallRail account (informational; the reliable scope is the company id below, since account ids change on reconnect)
 const CALLRAIL_COMPANY = process.env.CALLRAIL_COMPANY || 'COM2377c78f5f0249d4abbb51a2888b5f52'; // BBZ's CallRail company id — this is what actually filters calls. If calls vanish, pull callrail calls__company_id + calls__source and find the company whose calls include "BBZ Contact Us Page".
 const CALLRAIL_MONTHS = +(process.env.CALLRAIL_MONTHS || 6); // CallRail returns per-call rows; pulling many months is slow, so default to the last 6. Raise if your call volume is low.
-const GSC_ACCOUNT   = process.env.GSC_ACCOUNT || 'bbzlimo.com'; // BBZ Search Console property as it appears in the account_id field (the sc-domain property; the url-prefix one is "https://www.bbzlimo.com/")
+const GSC_ACCOUNT   = (process.env.GSC_ACCOUNT || 'bbzlimo.com').replace(/^sc-domain:/i, '').replace(/\/+$/, '').trim(); // BBZ Search Console property as it appears in the account_id field. We strip a leading "sc-domain:" and any trailing slash so it matches Windsor's value ("bbzlimo.com") no matter how the env var is written. The url-prefix property ("https://www.bbzlimo.com/") is intentionally NOT matched.
 const MODEL         = process.env.MODEL || 'claude-sonnet-4-6';
 const DASH_PASSWORD = process.env.DASH_PASSWORD || ''; // set this on Railway to require a password before the report can be viewed; leave unset to keep it open
+const BUILD = 15; // bumped every deploy; surfaced in the footer and /api/health so you can confirm what's actually live
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const SNAPSHOT = JSON.parse(fs.readFileSync(path.join(__dirname, 'snapshot.json'), 'utf8'));
@@ -440,6 +441,31 @@ app.post('/login', (req, res) => {
     return res.json({ ok: true });
   }
   return res.status(401).json({ ok: false, error: 'Incorrect password.' });
+});
+
+// Public diagnostics: confirms which build is live, whether the password gate is on,
+// and what the live data pull currently contains. Registered BEFORE the gate so you
+// can always reach it (even when the report is locked). Exposes no secrets.
+app.get('/api/health', (req, res) => {
+  const d = cache.data;
+  const mlen = s => (d && d[s] && Array.isArray(d[s].months)) ? d[s].months.length : 0;
+  res.set('Cache-Control', 'no-store').json({
+    build: BUILD,
+    passwordProtected: !!DASH_PASSWORD,
+    liveDataReady: isFresh(),
+    windsorKeySet: !!WINDSOR_KEY,
+    anthropicKeySet: !!ANTHROPIC_KEY,
+    gscAccount: GSC_ACCOUNT,
+    sections: d ? {
+      ga4Months: Array.isArray(d.months) ? d.months.length : 0,
+      googleAdsMonths: mlen('gads'),
+      metaMonths: mlen('meta'),
+      gbpMonths: mlen('gbp'),
+      callrailMonths: mlen('callrail'),
+      searchConsoleMonths: mlen('searchconsole'),
+      searchConsoleQueries: (d.searchconsole && d.searchconsole.queries) ? Object.keys(d.searchconsole.queries).length : 0,
+    } : 'warming up, refresh in a few seconds',
+  });
 });
 
 // Gate everything below: serve the login screen for page views, 401 for API calls.
