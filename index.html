@@ -83,8 +83,9 @@
   .qa-in{flex:1;font-family:var(--sans);font-size:13px;padding:10px 13px;border:1px solid var(--line);border-radius:8px;color:var(--ink)}
   .qa-in:focus{outline:none;border-color:var(--gold)}
   .qa-btn{font-family:var(--sans);font-size:13px;font-weight:700;color:#fff;background:var(--black);border:none;border-radius:8px;padding:10px 22px;cursor:pointer}
-  .qa-ans{font-size:13px;color:var(--ink);line-height:1.65;margin-top:13px;white-space:pre-wrap}
+  .qa-ans{font-size:13px;color:var(--ink);line-height:1.65;margin-top:13px}
   .qa-ans:empty{display:none}
+  .qa-ans p{margin:0 0 8px}.qa-ans p:last-child{margin-bottom:0}
 
 
   .grid{display:grid;gap:14px}
@@ -281,7 +282,7 @@
 
 <script>
 /*__DATA__*/
-try{var __B='build 19';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
+try{var __B='build 21';var __f=document.getElementById('foot');if(__f)__f.textContent='BBZ Performance Dashboard · '+__B+' · rendered '+new Date().toLocaleString();}catch(e){}
 const C=getComputedStyle(document.documentElement),col=n=>C.getPropertyValue('--'+n).trim();
 const PAL=['c1','c2','c3','c4','c5','c6','c7','c8','c9'].map(col);
 const HASCHART=typeof Chart!=='undefined';
@@ -717,8 +718,35 @@ generateAnalysis(false);
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')askView(inp,ans);});})();
 async function askView(inp,ans){const q=inp.value.trim();if(!q)return;ans.textContent='Thinking…';
   try{const r=await fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:q,context:window.__SNAP})});const j=await r.json();
-    ans.textContent=r.ok?(j.text||'No answer returned.'):'Error: '+(j.error?JSON.stringify(j.error).slice(0,200):r.status);
+    if(r.ok){ans.innerHTML=mdLite(j.text||'No answer returned.');}
+    else{ans.textContent='Error: '+(j.error?JSON.stringify(j.error).slice(0,200):r.status);}
   }catch(e){ans.textContent='Could not reach the server ('+e.message+').';}}
+// Render a safe subset of Markdown to HTML so answers look clean even if the model formats them.
+function mdLite(src){
+  let t=String(src).replace(/\s*[\u2014\u2013]\s*/g,' - ');                 // em/en dash -> hyphen
+  const escH=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const inl=s=>escH(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'$1');
+  const lines=t.split(/\r?\n/); let html='',para=[],i=0;
+  const flush=()=>{if(para.length){html+='<p>'+inl(para.join(' '))+'</p>';para=[];}};
+  const cells=r=>r.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(c=>c.trim());
+  while(i<lines.length){const ln=lines[i];
+    if(/\|/.test(ln)&&i+1<lines.length&&/-/.test(lines[i+1])&&/^[\s:|\-]+$/.test(lines[i+1])){
+      flush();const hc=cells(ln);i+=2;const rows=[];
+      while(i<lines.length&&/\|/.test(lines[i])){rows.push(lines[i]);i++;}
+      html+='<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:12px"><thead><tr>'
+        +hc.map(c=>'<th style="text-align:left;padding:5px 8px;border-bottom:1.5px solid var(--gold);color:var(--ink2);font-size:10px;text-transform:uppercase;letter-spacing:.04em">'+inl(c)+'</th>').join('')
+        +'</tr></thead><tbody>'
+        +rows.map(r=>'<tr>'+cells(r).map((x,ix)=>'<td style="padding:5px 8px;border-bottom:1px solid var(--line2)'+(ix?';text-align:right;font-variant-numeric:tabular-nums':'')+'">'+inl(x)+'</td>').join('')+'</tr>').join('')
+        +'</tbody></table>';continue;}
+    const hm=ln.match(/^\s*#{1,6}\s+(.*)$/);
+    if(hm){flush();html+='<div style="font-weight:700;margin:10px 0 4px">'+inl(hm[1])+'</div>';i++;continue;}
+    const bm=ln.match(/^\s*[-*]\s+(.*)$/);
+    if(bm){flush();const items=[];while(i<lines.length){const m=lines[i].match(/^\s*[-*]\s+(.*)$/);if(!m)break;items.push(m[1]);i++;}
+      html+='<ul style="margin:4px 0 8px;padding-left:18px">'+items.map(x=>'<li style="margin:2px 0">'+inl(x)+'</li>').join('')+'</ul>';continue;}
+    if(/^\s*-{3,}\s*$/.test(ln)){flush();i++;continue;}
+    if(/^\s*$/.test(ln)){flush();i++;continue;}
+    para.push(ln.trim());i++;}
+  flush();return html||'<p>No answer returned.</p>';}
 
 
 document.getElementById('foot').innerHTML='';
